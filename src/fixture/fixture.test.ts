@@ -220,16 +220,7 @@ test(`fixture has all the zod types`, () => {
 		ErrorGenerator,
 	]);
 
-	// BUG: bigints can yield their exclusive bound (bigint ignores gt/lt
-	// exclusivity), so leave those fields out of the validation for now.
-	expect(fixture).toReasonablySatisfy(
-		schemaWithEverything.omit({
-			bigint_gt: true,
-			bigint_lt: true,
-			bigint_positive: true,
-			bigint_negative: true,
-		}),
-	);
+	expect(fixture).toReasonablySatisfy(schemaWithEverything);
 	expect(fixture.fromSchema(schemaWithEverything, { seed: 1 }))
 		.toMatchInlineSnapshot(`
 			{
@@ -262,8 +253,8 @@ test(`fixture has all the zod types`, () => {
 			  "array_nonempty": [
 			    "ebjhcvdfzrpowyq",
 			  ],
-			  "bigint": 7n,
-			  "bigint_gt": 39n,
+			  "bigint": 8n,
+			  "bigint_gt": 40n,
 			  "bigint_gte": 9n,
 			  "bigint_lt": -84n,
 			  "bigint_lte": -88n,
@@ -271,7 +262,7 @@ test(`fixture has all the zod types`, () => {
 			  "bigint_negative": -9n,
 			  "bigint_nonnegative": 4n,
 			  "bigint_nonpositive": -90n,
-			  "bigint_positive": 93n,
+			  "bigint_positive": 94n,
 			  "boolean": false,
 			  "const_enum": "apple",
 			  "custom": "100px",
@@ -300,16 +291,16 @@ test(`fixture has all the zod types`, () => {
 			  "nullable": null,
 			  "number": 87.1078145224601,
 			  "number_finite": -14.32351809926331,
-			  "number_gt": 73.43481058767065,
+			  "number_gt": 73.15220218966715,
 			  "number_gte": 81.67499317205511,
 			  "number_int": -15,
-			  "number_lt": -36.25339860841632,
+			  "number_lt": -35.64045051811263,
 			  "number_lte": -59.274632218293846,
 			  "number_multipleOf": 10,
-			  "number_negative": -26.03495768457651,
+			  "number_negative": -25.28783604502678,
 			  "number_nonnegative": 75.18729693256319,
 			  "number_nonpositive": -57.218736479990184,
-			  "number_positive": 86.49064341560006,
+			  "number_positive": 86.35418526828289,
 			  "number_safe": -6549040414064640,
 			  "object": {
 			    "name": "dbh-jphfbgeuefz",

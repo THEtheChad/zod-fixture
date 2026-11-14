@@ -54,17 +54,15 @@ describe('create dates', () => {
 describe('regressions', () => {
 	const fixture = new Fixture();
 
-	// BUG: a one-sided bound collides with the default for the other side.
-	test.fails('respects a min above the default max', () => {
+	test('respects a min above the default max', () => {
 		expect(fixture).toReasonablySatisfy(z.date().min(new Date('2200-01-01')));
 	});
 
-	test.fails('respects a max below the default min', () => {
+	test('respects a max below the default min', () => {
 		expect(fixture).toReasonablySatisfy(z.date().max(new Date('1800-01-01')));
 	});
 
-	// BUG: only the first check of each kind is used.
-	test.fails('respects the tightest of repeated min checks', () => {
+	test('respects the tightest of repeated min checks', () => {
 		expect(fixture).toReasonablySatisfy(
 			z
 				.date()
@@ -72,5 +70,10 @@ describe('regressions', () => {
 				.min(new Date('2020-01-01'))
 				.max(new Date('2021-01-01')),
 		);
+	});
+
+	test('respects a min equal to the max', () => {
+		const date = new Date('2024-02-29T12:00:00.000Z');
+		expect(fixture.fromSchema(z.date().min(date).max(date))).toEqual(date);
 	});
 });

@@ -102,7 +102,13 @@ export class Randomization {
 			throw new Error(`min ${min} can't be greater than max ${max}`);
 		}
 
-		return this.unitInterval() * (max - min) + min;
+		const unit = this.unitInterval();
+		const span = max - min;
+
+		// Very wide ranges (e.g. ±Number.MAX_VALUE) overflow `max - min`.
+		return Number.isFinite(span)
+			? unit * span + min
+			: unit * max + (1 - unit) * min;
 	}
 
 	int(config?: { min?: number; max?: number }): number {
@@ -116,27 +122,30 @@ export class Randomization {
 		return Math.floor(this.unitInterval() * (max - min + 1)) + min;
 	}
 
+	/** A bigint in `[min, max]`, both inclusive. */
 	bigInt(config?: { min?: bigint; max?: bigint }): bigint {
 		const min = config?.min ?? this.defaults.bigint.min;
 		const max = config?.max ?? this.defaults.bigint.max;
 
-		if (min >= max) {
+		if (min > max) {
 			throw new Error(`min ${min} can't be greater than max ${max}`);
 		}
 
-		const difference = max - min;
-		const differenceLength = difference.toString().length;
-		let multiplier = '';
-		while (multiplier.length < differenceLength) {
-			multiplier += this.unitInterval().toString().split('.')[1];
+		// Scale `range` by a random fraction with as many decimal digits as
+		// `range` has, built 15 digits at a time from the unit interval.
+		const range = max - min + 1n;
+		const digits = range.toString().length;
+		let fraction = '';
+		while (fraction.length < digits) {
+			fraction += Math.floor(this.unitInterval() * 1e15)
+				.toString()
+				.padStart(15, '0');
 		}
-		multiplier = multiplier.slice(0, differenceLength);
-		const divisor = '1' + '0'.repeat(differenceLength);
 
-		const randomDifference =
-			(difference * BigInt(multiplier)) / BigInt(divisor);
+		const offset =
+			(range * BigInt(fraction.slice(0, digits))) / 10n ** BigInt(digits);
 
-		return min + randomDifference;
+		return min + offset;
 	}
 
 	lorem(length: number, type: 'word' | 'sentence' | 'paragraph' = 'word') {

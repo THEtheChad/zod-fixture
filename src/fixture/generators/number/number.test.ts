@@ -1,4 +1,4 @@
-import { Fixture } from '@/fixture';
+import { Fixture, UnconstrainedFixture } from '@/fixture';
 import { ConstrainedTransformer } from '@/transformer/transformer';
 import { describe, expect, test } from 'vitest';
 import { z } from 'zod';
@@ -117,38 +117,113 @@ describe('create numbers', () => {
 describe('regressions', () => {
 	const fixture = new Fixture();
 
-	// BUG: a one-sided bound collides with the default for the other side.
-	test.fails('respects a min above the default max', () => {
+	test('respects a min above the default max', () => {
 		expect(fixture).toReasonablySatisfy(z.number().min(1000));
 	});
 
-	test.fails('respects a max below the default min', () => {
+	test('respects a max below the default min', () => {
 		expect(fixture).toReasonablySatisfy(z.number().max(-500));
 	});
 
-	// BUG: exclusive float bounds are shifted by ±1.
-	test.fails('respects exclusive bounds inside a unit interval', () => {
+	test('respects exclusive bounds inside a unit interval', () => {
 		expect(fixture).toReasonablySatisfy(z.number().gt(0).lt(1));
 	});
 
-	test.fails('respects positive() with a fractional max', () => {
+	test('respects positive() with a fractional max', () => {
 		expect(fixture).toReasonablySatisfy(z.number().positive().max(0.5));
 	});
 
-	// BUG: only the first check of each kind is used.
-	test.fails('respects the tightest of repeated min checks', () => {
+	test('respects the tightest of repeated min checks', () => {
 		expect(fixture).toReasonablySatisfy(z.number().min(0).min(90).max(100));
 	});
 
-	// BUG: int() with a fractional min yields a non-integer.
-	test.fails('respects int() with a fractional min', () => {
+	test('respects int() with a fractional min', () => {
 		expect(fixture).toReasonablySatisfy(z.number().int().min(0.5).max(10));
 	});
 
-	// BUG: an unsatisfiable multipleOf silently returns an out-of-range value.
-	test.fails('throws for an unsatisfiable multipleOf', () => {
+	test('throws for an unsatisfiable multipleOf', () => {
 		expect(() =>
 			fixture.fromSchema(z.number().int().multipleOf(7).min(1).max(6)),
-		).toThrow();
+		).toThrowError(
+			'Unable to generate a number: no integer multiple of 7 in [1, 6].',
+		);
+	});
+
+	test('respects a fractional multipleOf with exclusive bounds', () => {
+		expect(fixture).toReasonablySatisfy(
+			z.number().multipleOf(0.1).gt(0.3).lt(0.6),
+		);
+	});
+
+	test('combines int() with a fractional multipleOf', () => {
+		expect(fixture).toReasonablySatisfy(z.number().int().multipleOf(1.5));
+	});
+
+	test('respects a min equal to the max', () => {
+		expect(fixture.fromSchema(z.number().min(5).max(5))).toBe(5);
+	});
+
+	test('supports bounds near the limits of a double', () => {
+		expect(fixture).toReasonablySatisfy(
+			z.number().min(-Number.MAX_VALUE).max(Number.MAX_VALUE),
+		);
+	});
+
+	test('throws for an empty exclusive range', () => {
+		expect(() => fixture.fromSchema(z.number().gt(5).lt(5))).toThrowError(
+			'Unable to generate a number: no value in (5, 5).',
+		);
+	});
+
+	test.each([
+		['gt(100)', z.number().gt(100)],
+		['lt(-100)', z.number().lt(-100)],
+		['int().gt(100)', z.number().int().gt(100)],
+		['min(1).multipleOf(1000)', z.number().min(1).multipleOf(1000)],
+		['positive().multipleOf(1000)', z.number().positive().multipleOf(1000)],
+		['negative().multipleOf(1000)', z.number().negative().multipleOf(1000)],
+		['gte(100).multipleOf(7)', z.number().gte(100).multipleOf(7)],
+		[
+			'multipleOf(0.1) in [0.3, 0.3]',
+			z.number().multipleOf(0.1).min(0.3).max(0.3),
+		],
+		[
+			'multipleOf(0.1) in [0.25, 0.3]',
+			z.number().multipleOf(0.1).min(0.25).max(0.3),
+		],
+		[
+			'multipleOf(0.01) in [0.07, 0.07]',
+			z.number().multipleOf(0.01).min(0.07).max(0.07),
+		],
+		['multipleOf(0.5).multipleOf(3)', z.number().multipleOf(0.5).multipleOf(3)],
+		[
+			'multipleOf(0.2).multipleOf(0.3)',
+			z.number().multipleOf(0.2).multipleOf(0.3),
+		],
+		['min(-Infinity).max(Infinity)', z.number().min(-Infinity).max(Infinity)],
+		[
+			'multipleOf(0.1) up to 1e308',
+			z.number().multipleOf(0.1).min(0).max(1e308),
+		],
+	])('respects %s', (_, schema) => {
+		expect(fixture).toReasonablySatisfy(schema);
+	});
+
+	test.each([
+		['multipleOf(0.3)', z.number().multipleOf(0.3)],
+		['int().multipleOf(1.5)', z.number().int().multipleOf(1.5)],
+		[
+			'multipleOf(0.125).multipleOf(0.5)',
+			z.number().multipleOf(0.125).multipleOf(0.5),
+		],
+		['multipleOf(0.001) with a max', z.number().multipleOf(0.001).max(1e9)],
+	])('respects %s with the unconstrained fixture', (_, schema) => {
+		expect(new UnconstrainedFixture()).toReasonablySatisfy(schema);
+	});
+
+	test('throws for multipleOf(0)', () => {
+		expect(() => fixture.fromSchema(z.number().multipleOf(0))).toThrowError(
+			'Unable to generate a number: multipleOf(0) never matches.',
+		);
 	});
 });

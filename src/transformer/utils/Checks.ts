@@ -11,6 +11,16 @@ export class Checks<TChecks extends { kind: string }[]> {
 			| undefined;
 	}
 
+	/** Every check of `kind`; Zod keeps all of them, e.g. `.min(0).min(90)`. */
+	findAll<TKind extends string>(
+		kind: TKind,
+	): FilterChecks<TChecks[number], TKind>[] {
+		return this.checks.filter((check) => check.kind === kind) as FilterChecks<
+			TChecks[number],
+			TKind
+		>[];
+	}
+
 	has<TKind extends string>(kind: TKind) {
 		return this.find(kind) !== undefined;
 	}
