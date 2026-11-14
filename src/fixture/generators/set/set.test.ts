@@ -1,3 +1,4 @@
+import { Fixture } from '@/fixture';
 import { ConstrainedTransformer } from '@/transformer/transformer';
 import { describe, expect, test } from 'vitest';
 import { z } from 'zod';
@@ -29,5 +30,29 @@ describe('create Sets', () => {
 		const schema = z.set(z.number()).min(5);
 		const fixture = transform.fromSchema(schema);
 		expect(() => schema.parse(fixture)).not.toThrowError();
+	});
+});
+
+describe('regressions', () => {
+	const fixture = new Fixture();
+
+	// BUG: sets add n values once and dedupe, so they come out under-filled.
+	test.fails('fills a set from a small value space', () => {
+		expect(fixture).toReasonablySatisfy(z.set(z.boolean()).size(2));
+	});
+
+	test.fails('fills a set from an enum', () => {
+		expect(fixture).toReasonablySatisfy(z.set(z.enum(['a', 'b', 'c'])).min(3));
+	});
+
+	test.fails('fills a set from a narrow int range', () => {
+		expect(fixture).toReasonablySatisfy(
+			z.set(z.number().int().min(0).max(3)).min(3),
+		);
+	});
+
+	// BUG: an unsatisfiable set size silently returns an under-filled set.
+	test.fails('throws when the value space is too small', () => {
+		expect(() => fixture.fromSchema(z.set(z.boolean()).min(3))).toThrow();
 	});
 });

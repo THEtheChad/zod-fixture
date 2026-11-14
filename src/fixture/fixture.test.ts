@@ -399,3 +399,12 @@ test(`fixture has all the zod types`, () => {
 			}
 		`);
 });
+
+// BUG: there are no generators for ZodPipeline or ZodCatch.
+test.fails('supports pipe()', () => {
+	expect(new Fixture()).toReasonablySatisfy(z.string().pipe(z.string().min(3)));
+});
+
+test.fails('supports catch()', () => {
+	expect(new Fixture()).toReasonablySatisfy(z.string().catch('fallback'));
+});

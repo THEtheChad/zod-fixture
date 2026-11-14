@@ -1,3 +1,4 @@
+import { Fixture } from '@/fixture';
 import { ConstrainedTransformer } from '@/transformer/transformer';
 import { describe, expect, test } from 'vitest';
 import { z } from 'zod';
@@ -56,5 +57,16 @@ describe('create enums', () => {
 				transform.fromSchema(z.nativeEnum(Fruits)) as string | number
 			).toString(),
 		).toMatch(/^apple|banana|3$/);
+	});
+});
+
+describe('regressions', () => {
+	const fixture = new Fixture();
+
+	// BUG: numeric-looking keys are treated as reverse mappings and dropped.
+	test.fails('supports a native enum with numeric-looking keys', () => {
+		expect(fixture).toReasonablySatisfy(
+			z.nativeEnum({ '0': 'zero', '1': 'one' } as const),
+		);
 	});
 });

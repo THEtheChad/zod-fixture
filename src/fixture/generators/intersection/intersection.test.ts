@@ -1,3 +1,4 @@
+import { Fixture } from '@/fixture';
 import { ConstrainedTransformer } from '@/transformer/transformer';
 import { describe, expect, test } from 'vitest';
 import { z } from 'zod';
@@ -65,5 +66,30 @@ describe('create intersections', () => {
 
 		expect(result[0]).toHaveProperty('left');
 		expect(result[0]).toHaveProperty('right');
+	});
+});
+
+describe('regressions', () => {
+	const fixture = new Fixture();
+
+	// BUG: both sides are generated independently, so anything but key-disjoint objects throws.
+	test.fails('intersects two string schemas', () => {
+		expect(fixture).toReasonablySatisfy(
+			z.string().min(3).and(z.string().max(10)),
+		);
+	});
+
+	test.fails('intersects two number schemas', () => {
+		expect(fixture).toReasonablySatisfy(
+			z.number().min(0).and(z.number().max(10)),
+		);
+	});
+
+	test.fails('intersects objects that share a key', () => {
+		expect(fixture).toReasonablySatisfy(
+			z
+				.object({ a: z.string(), b: z.number() })
+				.and(z.object({ a: z.string().min(1) })),
+		);
 	});
 });

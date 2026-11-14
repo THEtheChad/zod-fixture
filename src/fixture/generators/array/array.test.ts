@@ -1,3 +1,4 @@
+import { Fixture } from '@/fixture';
 import { ConstrainedTransformer } from '@/transformer/transformer';
 import { describe, expect, test } from 'vitest';
 import { z } from 'zod';
@@ -31,5 +32,16 @@ describe('create Arrays', () => {
 		const schema = z.string().array().min(5);
 		const fixture = transform.fromSchema(schema);
 		expect(() => schema.parse(fixture)).not.toThrowError();
+	});
+});
+
+describe('regressions', () => {
+	const fixture = new Fixture();
+
+	// BUG: length can be overridden by min/max.
+	test.fails('lets length win over min and max', () => {
+		expect(fixture).toReasonablySatisfy(
+			z.array(z.string()).min(1).max(10).length(5),
+		);
 	});
 });

@@ -1,3 +1,4 @@
+import { Fixture } from '@/fixture';
 import { ConstrainedTransformer } from '@/transformer/transformer';
 import { describe, expect, test } from 'vitest';
 import { z } from 'zod';
@@ -52,5 +53,14 @@ describe('create unions', () => {
 
 		expect((result as I).type).toBeTypeOf('string');
 		expect((result as I).type).toMatch(/^a|b$/);
+	});
+});
+
+describe('regressions', () => {
+	const fixture = new Fixture();
+
+	// BUG: a never option can be picked and throws.
+	test.fails('skips never options', () => {
+		expect(fixture).toReasonablySatisfy(z.union([z.string(), z.never()]));
 	});
 });

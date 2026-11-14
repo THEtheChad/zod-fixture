@@ -1,3 +1,4 @@
+import { Fixture } from '@/fixture';
 import { ConstrainedTransformer } from '@/transformer/transformer';
 import { describe, expect, test } from 'vitest';
 import { z } from 'zod';
@@ -110,5 +111,44 @@ describe('create numbers', () => {
 		expect(
 			isFinite(transform.fromSchema(z.number().finite()) as number),
 		).toBeTruthy();
+	});
+});
+
+describe('regressions', () => {
+	const fixture = new Fixture();
+
+	// BUG: a one-sided bound collides with the default for the other side.
+	test.fails('respects a min above the default max', () => {
+		expect(fixture).toReasonablySatisfy(z.number().min(1000));
+	});
+
+	test.fails('respects a max below the default min', () => {
+		expect(fixture).toReasonablySatisfy(z.number().max(-500));
+	});
+
+	// BUG: exclusive float bounds are shifted by ±1.
+	test.fails('respects exclusive bounds inside a unit interval', () => {
+		expect(fixture).toReasonablySatisfy(z.number().gt(0).lt(1));
+	});
+
+	test.fails('respects positive() with a fractional max', () => {
+		expect(fixture).toReasonablySatisfy(z.number().positive().max(0.5));
+	});
+
+	// BUG: only the first check of each kind is used.
+	test.fails('respects the tightest of repeated min checks', () => {
+		expect(fixture).toReasonablySatisfy(z.number().min(0).min(90).max(100));
+	});
+
+	// BUG: int() with a fractional min yields a non-integer.
+	test.fails('respects int() with a fractional min', () => {
+		expect(fixture).toReasonablySatisfy(z.number().int().min(0.5).max(10));
+	});
+
+	// BUG: an unsatisfiable multipleOf silently returns an out-of-range value.
+	test.fails('throws for an unsatisfiable multipleOf', () => {
+		expect(() =>
+			fixture.fromSchema(z.number().int().multipleOf(7).min(1).max(6)),
+		).toThrow();
 	});
 });

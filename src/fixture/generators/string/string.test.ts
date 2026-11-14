@@ -1,3 +1,4 @@
+import { Fixture } from '@/fixture';
 import { ConstrainedTransformer } from '@/transformer/transformer';
 import { describe, expect, test } from 'vitest';
 import { z } from 'zod';
@@ -256,5 +257,125 @@ describe('create strings', () => {
 					/^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$/gm,
 				),
 		);
+	});
+});
+
+describe('regressions', () => {
+	const fixture = new Fixture();
+
+	// BUG: RegExCache throws on every cache hit.
+	test.fails('supports a regex inside an array', () => {
+		expect(fixture).toReasonablySatisfy(z.array(z.string().regex(/^[a-z]+$/)));
+	});
+
+	test.fails('supports one regex shared by two fields', () => {
+		const pattern = /^[a-z]+$/;
+		expect(fixture).toReasonablySatisfy(
+			z.object({ a: z.string().regex(pattern), b: z.string().regex(pattern) }),
+		);
+	});
+
+	// BUG: formatString pads/slices formatted values into invalid ones.
+	test.fails('keeps an email valid with a long min', () => {
+		expect(fixture).toReasonablySatisfy(z.string().email().min(25));
+	});
+
+	test.fails('keeps an email valid with a short max', () => {
+		expect(fixture).toReasonablySatisfy(z.string().email().max(10));
+	});
+
+	test.fails('keeps a url valid with a short max', () => {
+		expect(fixture).toReasonablySatisfy(z.string().url().max(8));
+	});
+
+	test.fails('keeps a regex match valid with a long min', () => {
+		expect(fixture).toReasonablySatisfy(
+			z
+				.string()
+				.regex(/^[a-z]+$/)
+				.min(50),
+		);
+	});
+
+	test.fails('supports a startsWith longer than the default length', () => {
+		expect(fixture).toReasonablySatisfy(
+			z.string().startsWith('abcdefghijklmnopqrst'),
+		);
+	});
+
+	test.fails('keeps an email valid with endsWith', () => {
+		expect(fixture).toReasonablySatisfy(
+			z.string().email().endsWith('@acme.io'),
+		);
+	});
+
+	// BUG: affixes are used as String.replace patterns.
+	test.fails('treats affixes literally', () => {
+		expect(fixture).toReasonablySatisfy(
+			z.string().startsWith('$&').endsWith('$$'),
+		);
+	});
+
+	// BUG: the includes position is ignored.
+	test.fails('respects includes with a position', () => {
+		expect(fixture).toReasonablySatisfy(
+			z.string().includes('abc', { position: 10 }),
+		);
+	});
+
+	// BUG: only the first check of each kind is used.
+	test.fails('respects the tightest of repeated min checks', () => {
+		expect(fixture).toReasonablySatisfy(z.string().min(1).min(20));
+	});
+
+	// BUG: unsatisfiable strings silently return invalid values.
+	test.fails('throws when includes cannot fit the length', () => {
+		expect(() =>
+			fixture.fromSchema(z.string().length(3).includes('abcd')),
+		).toThrow();
+	});
+
+	test.fails('throws when affixes cannot fit the length', () => {
+		expect(() =>
+			fixture.fromSchema(
+				z.string().startsWith('abc').endsWith('xyz').length(4),
+			),
+		).toThrow();
+	});
+
+	test.fails('throws when an ip cannot fit the max', () => {
+		expect(() =>
+			fixture.fromSchema(z.string().ip({ version: 'v4' }).max(5)),
+		).toThrow();
+	});
+
+	// BUG: these string formats fall through to random letters.
+	test.fails('supports date()', () => {
+		expect(fixture).toReasonablySatisfy(z.string().date());
+	});
+
+	test.fails('supports time()', () => {
+		expect(fixture).toReasonablySatisfy(z.string().time());
+	});
+
+	test.fails('supports duration()', () => {
+		expect(fixture).toReasonablySatisfy(z.string().duration());
+	});
+
+	test.fails('supports base64()', () => {
+		expect(fixture).toReasonablySatisfy(z.string().base64());
+	});
+
+	test.fails('supports nanoid()', () => {
+		expect(fixture).toReasonablySatisfy(z.string().nanoid());
+	});
+
+	// BUG: datetime precision is ignored.
+	test.fails('respects datetime precision 0', () => {
+		expect(fixture).toReasonablySatisfy(z.string().datetime({ precision: 0 }));
+	});
+
+	test.fails('respects datetime precision 6', () => {
+		expect(fixture).toReasonablySatisfy(z.string().datetime({ precision: 6 }));
 	});
 });

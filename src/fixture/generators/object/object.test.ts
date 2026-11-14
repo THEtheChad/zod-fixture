@@ -1,3 +1,4 @@
+import { Fixture } from '@/fixture';
 import { ConstrainedTransformer } from '@/transformer/transformer';
 import { describe, expect, test } from 'vitest';
 import { z } from 'zod';
@@ -161,5 +162,22 @@ describe('create Records', () => {
 
 		expect(Object.keys(result as I)[0]).toBeTypeOf('string');
 		expect(Object.values(result as I)[0]).toBeTypeOf('string');
+	});
+});
+
+describe('regressions', () => {
+	const fixture = new Fixture();
+
+	// BUG: the extra passthrough/catchall key is a random lorem word that can collide with a declared key.
+	test.fails('never overwrites a declared key with a passthrough key', () => {
+		expect(fixture).toReasonablySatisfy(
+			z.object({ dolor: z.number() }).passthrough(),
+		);
+	});
+
+	test.fails('never overwrites a declared key with a catchall key', () => {
+		expect(fixture).toReasonablySatisfy(
+			z.object({ dolor: z.number() }).catchall(z.string()),
+		);
 	});
 });

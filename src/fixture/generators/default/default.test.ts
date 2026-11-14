@@ -1,3 +1,6 @@
+import { Fixture } from '@/fixture';
+import { ZodString } from '@/internal/zod';
+import { Generator } from '@/transformer/generator';
 import { ConstrainedTransformer } from '@/transformer/transformer';
 import { describe, expect, test } from 'vitest';
 import { z } from 'zod';
@@ -74,5 +77,24 @@ describe('create default', () => {
 
 	test('produces a valid fixture', () => {
 		expect(transform).toReasonablySatisfy(schema);
+	});
+});
+
+const NameGenerator = Generator({
+	schema: ZodString,
+	filter: ({ context }) => context.path.at(-1) === 'name',
+	output: () => 'NAME',
+});
+
+describe('regressions', () => {
+	// BUG: the inner type is generated without context, so path-based generators miss.
+	test.fails('passes path context to the inner type', () => {
+		const fixture = new Fixture().extend(NameGenerator);
+		const schema = z.object({ name: z.string().default('default') });
+		for (let seed = 0; seed < 20; seed++) {
+			expect(fixture.fromSchema(schema, { seed })).toMatchObject({
+				name: expect.stringMatching(/^(NAME|default)$/),
+			});
+		}
 	});
 });

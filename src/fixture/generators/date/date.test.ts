@@ -1,3 +1,4 @@
+import { Fixture } from '@/fixture';
 import { ConstrainedTransformer } from '@/transformer/transformer';
 import { describe, expect, test } from 'vitest';
 import { z } from 'zod';
@@ -47,5 +48,29 @@ describe('create dates', () => {
 					.max(new Date(1991, 10, 20)),
 			),
 		).toThrow();
+	});
+});
+
+describe('regressions', () => {
+	const fixture = new Fixture();
+
+	// BUG: a one-sided bound collides with the default for the other side.
+	test.fails('respects a min above the default max', () => {
+		expect(fixture).toReasonablySatisfy(z.date().min(new Date('2200-01-01')));
+	});
+
+	test.fails('respects a max below the default min', () => {
+		expect(fixture).toReasonablySatisfy(z.date().max(new Date('1800-01-01')));
+	});
+
+	// BUG: only the first check of each kind is used.
+	test.fails('respects the tightest of repeated min checks', () => {
+		expect(fixture).toReasonablySatisfy(
+			z
+				.date()
+				.min(new Date('2000-01-01'))
+				.min(new Date('2020-01-01'))
+				.max(new Date('2021-01-01')),
+		);
 	});
 });

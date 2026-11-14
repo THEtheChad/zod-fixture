@@ -1,3 +1,4 @@
+import { Fixture } from '@/fixture';
 import { ConstrainedTransformer } from '@/transformer/transformer';
 import { describe, expect, test } from 'vitest';
 import { z } from 'zod';
@@ -80,5 +81,14 @@ describe('create empty types', () => {
 		expect(() => {
 			transform.fromSchema(SampleWithOptionalValueSchema);
 		}).not.toThrow();
+	});
+});
+
+describe('regressions', () => {
+	const fixture = new Fixture();
+
+	// BUG: an optional never can try to generate never and throws.
+	test.fails('supports an optional never', () => {
+		expect(fixture).toReasonablySatisfy(z.never().optional());
 	});
 });
