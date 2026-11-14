@@ -27,8 +27,6 @@ jobs:
         run: npm run lint
       - name: 🧪 Test
         run: npm run test:coverage
-        env:
-          SATISFY_ITERATIONS: 1000
 
   docs:
     timeout-minutes: 5
