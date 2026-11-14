@@ -25,7 +25,6 @@ export const BigIntMultipleOfGenerator = Generator({
 		const minRaw = checks.find('min')?.value ?? transform.defaults.bigint.min;
 		const maxRaw = checks.find('max')?.value ?? transform.defaults.bigint.max;
 
-		// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 		const multipleOf = checks.find('multipleOf')!.value ?? 1;
 
 		const min = minRaw / multipleOf;

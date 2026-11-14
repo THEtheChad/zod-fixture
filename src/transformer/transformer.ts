@@ -5,7 +5,6 @@ import type { Definition } from './generator';
 import { Runner } from './runner';
 
 export abstract class Transformer {
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	abstract readonly generators: Definition[];
 	abstract readonly transformerDefaults: Defaults;
 
@@ -13,7 +12,6 @@ export abstract class Transformer {
 		this.instanceDefaults = { seed: randomSeed(), ...instanceDefaults };
 	}
 
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	extend(generators: Definition | Definition[]) {
 		const input = Array.isArray(generators) ? generators : [generators];
 		// eslint-disable-next-line @typescript-eslint/ban-ts-comment
@@ -35,13 +33,11 @@ export abstract class Transformer {
 }
 
 export class ConstrainedTransformer extends Transformer {
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	generators: Definition[] = [];
 	transformerDefaults: Defaults = constrained;
 }
 
 export class UnconstrainedTransformer extends Transformer {
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	generators: Definition[] = [];
 	transformerDefaults: Defaults = unconstrained;
 }

@@ -93,6 +93,5 @@ export class Utils {
 		return new Checks(checks);
 	}
 
-	// eslint-disable-next-line @typescript-eslint/no-empty-function
 	noop() {}
 }

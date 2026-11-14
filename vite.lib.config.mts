@@ -6,20 +6,20 @@ import { defineConfig } from 'vitest/config';
 export default defineConfig({
 	resolve: {
 		alias: {
-			// eslint-disable-next-line no-undef
-			'@': path.resolve(__dirname, './src'),
-			'zod-fixture': path.resolve(__dirname, './src/public.ts'),
+			'@': path.resolve(import.meta.dirname, './src'),
+			'zod-fixture': path.resolve(import.meta.dirname, './src/public.ts'),
 		},
 	},
 	plugins: [
 		dts({
 			include: ['src'],
-			exclude: ['**/*.test.ts'],
+			// src/types only holds test-only augmentations (vitest matchers).
+			exclude: ['**/*.test.ts', 'src/types/**'],
 			// Bundle the declarations into dist/public.d.ts, then copy it to
 			// .d.mts/.d.cts so each `exports` condition gets matching types.
-			rollupTypes: true,
+			bundleTypes: true,
 			afterBuild: () => {
-				const types = path.resolve(__dirname, 'dist/public.d.ts');
+				const types = path.resolve(import.meta.dirname, 'dist/public.d.ts');
 				copyFileSync(types, types.replace(/\.d\.ts$/, '.d.mts'));
 				copyFileSync(types, types.replace(/\.d\.ts$/, '.d.cts'));
 			},

@@ -97,7 +97,6 @@ export default class MersenneTwister {
 				(this.mt[i] ^
 					(((((s & 0xffff0000) >>> 16) * 1664525) << 16) +
 						(s & 0x0000ffff) * 1664525)) +
-				// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 				init_key[j]! +
 				j; /* non linear */
 			this.mt[i] >>>= 0; /* for WORDSIZE > 32 machines */
@@ -146,20 +145,17 @@ export default class MersenneTwister {
 			for (kk = 0; kk < this.N - this.M; kk++) {
 				y =
 					(this.mt[kk] & this.UPPER_MASK) | (this.mt[kk + 1] & this.LOWER_MASK);
-				// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 				this.mt[kk] = this.mt[kk + this.M] ^ (y >>> 1) ^ mag01[y & 0x1]!;
 			}
 			for (; kk < this.N - 1; kk++) {
 				y =
 					(this.mt[kk] & this.UPPER_MASK) | (this.mt[kk + 1] & this.LOWER_MASK);
 				this.mt[kk] =
-					// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 					this.mt[kk + (this.M - this.N)] ^ (y >>> 1) ^ mag01[y & 0x1]!;
 			}
 			y =
 				(this.mt[this.N - 1] & this.UPPER_MASK) |
 				(this.mt[0] & this.LOWER_MASK);
-			// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 			this.mt[this.N - 1] = this.mt[this.M - 1] ^ (y >>> 1) ^ mag01[y & 0x1]!;
 
 			this.mti = 0;

@@ -50,7 +50,6 @@ import type { ZodConstructor } from '@/transformer/generator';
 
 // Forces typescript to cast our fake constructors as a true zod type
 const castAs = <T extends ZodTypeAny>(typeName: string) => {
-	// eslint-disable-next-line @typescript-eslint/no-empty-function
 	const mock = () => {};
 	// Reassign function name to match the zod type name
 	Object.defineProperty(mock, 'name', { value: typeName });
