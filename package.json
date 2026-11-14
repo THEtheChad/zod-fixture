@@ -12,6 +12,7 @@
 		"test:coverage": "vitest run --coverage -c vite.lib.config.mts",
 		"build": "vite build -c vite.lib.config.mts",
 		"lint": "eslint . --max-warnings 0",
+		"typecheck": "tsc --noEmit",
 		"prepare": "git config core.hookspath .githooks",
 		"docs:dev": "vitepress dev docs",
 		"docs:build": "vitepress build docs",
@@ -68,6 +69,7 @@
 		"randexp": "^0.5.3"
 	},
 	"devDependencies": {
+		"@types/node": "^22.20.5",
 		"@typescript-eslint/eslint-plugin": "^6.17.0",
 		"@typescript-eslint/parser": "^6.17.0",
 		"@vitest/coverage-v8": "^1.6.0",
