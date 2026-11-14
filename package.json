@@ -21,19 +21,22 @@
 		"readme:check": "git diff --name-only --exit-code README.md"
 	},
 	"files": [
-		"dist",
-		"!dist/examples",
-		"!dist/test",
-		"!dist/src/**/*.test.d.ts"
+		"dist"
 	],
 	"main": "./dist/zod-fixture.umd.cjs",
-	"module": "./dist/zod-fixture.es.js",
+	"module": "./dist/zod-fixture.es.mjs",
 	"exports": {
 		".": {
-			"import": "./dist/zod-fixture.es.js",
-			"require": "./dist/zod-fixture.umd.cjs",
-			"types": "./dist/public.d.ts"
-		}
+			"import": {
+				"types": "./dist/public.d.mts",
+				"default": "./dist/zod-fixture.es.mjs"
+			},
+			"require": {
+				"types": "./dist/public.d.cts",
+				"default": "./dist/zod-fixture.umd.cjs"
+			}
+		},
+		"./package.json": "./package.json"
 	},
 	"types": "./dist/public.d.ts",
 	"keywords": [
@@ -85,11 +88,5 @@
 		"vitepress": "^1.2.3",
 		"vitest": "^1.6.0",
 		"zod": "^3.23.8"
-	},
-	"imports": {
-		"@/*": "./src/*",
-		"zod-fixture": [
-			"./src/public.ts"
-		]
 	}
 }
