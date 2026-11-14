@@ -13,7 +13,7 @@ export const TupleGenerator = Generator({
 						transform.fromSchema(schema, {
 							...context,
 							path: [...context.path, idx],
-						})
+						}),
 					);
 				});
 			});
@@ -29,9 +29,9 @@ export const TupleGenerator = Generator({
 							transform.fromSchema(schema, {
 								...context,
 								path: [...context.path, known.length + idx],
-							})
+							}),
 						),
-					1
+					1,
 				);
 			});
 		});

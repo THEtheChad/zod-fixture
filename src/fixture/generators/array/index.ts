@@ -31,9 +31,9 @@ export const ArrayGenerator = Generator({
 							transform.fromSchema(schema, {
 								...context,
 								path: [...context.path, key],
-							})
+							}),
 						),
-					{ min, max }
+					{ min, max },
 				);
 			});
 		});
