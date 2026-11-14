@@ -173,12 +173,16 @@ export class Randomization {
 		return this.regexp(/01[0-9A-HJKMNP-TV-Z]{24}/);
 	}
 
-	regexp(pattern: string | RegExp): string {
-		return this.regExCache
-			.get(pattern, (randexp) => {
-				randexp.randInt = this.regExRandInt;
-				return randexp;
-			})
-			.gen();
+	/**
+	 * A string matching `pattern`. `maxRepetition` caps unbounded quantifiers
+	 * (`*`, `+`, `{n,}`); RandExp's default is 100.
+	 */
+	regexp(pattern: string | RegExp, maxRepetition = 100): string {
+		const randexp = this.regExCache.get(pattern, (instance) => {
+			instance.randInt = this.regExRandInt;
+			return instance;
+		});
+		randexp.max = maxRepetition;
+		return randexp.gen();
 	}
 }
