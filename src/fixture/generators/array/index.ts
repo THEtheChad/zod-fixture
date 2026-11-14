@@ -24,18 +24,17 @@ export const ArrayGenerator = Generator({
 		const result: unknown[] = [];
 
 		transform.utils.ifNotNever(def.type, (schema) => {
-			transform.utils.recursionCheck(schema, () => {
-				transform.utils.n(
-					(key) =>
-						result.push(
-							transform.fromSchema(schema, {
-								...context,
-								path: [...context.path, key],
-							}),
-						),
-					{ min, max },
-				);
-			});
+			transform.utils.n(
+				(key) =>
+					result.push(
+						transform.fromSchema(schema, {
+							...context,
+							path: [...context.path, key],
+						}),
+					),
+				// At the recursion limit, use the smallest length the schema allows.
+				transform.utils.atRecursionLimit ? userDefinedMin ?? 0 : { min, max },
+			);
 		});
 
 		return result;

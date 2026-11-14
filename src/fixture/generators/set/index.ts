@@ -26,19 +26,18 @@ export const SetGenerator = Generator({
 		const result = new Set<InferZodType<typeof def.valueType>>();
 
 		transform.utils.ifNotNever(def.valueType, (valueType) => {
-			transform.utils.recursionCheck(valueType, () => {
-				transform.utils.n(
-					() => {
-						result.add(
-							transform.fromSchema(valueType, {
-								...context,
-								path: [...context.path, result.size],
-							}),
-						);
-					},
-					{ min, max },
-				);
-			});
+			transform.utils.n(
+				() => {
+					result.add(
+						transform.fromSchema(valueType, {
+							...context,
+							path: [...context.path, result.size],
+						}),
+					);
+				},
+				// At the recursion limit, use the smallest size the schema allows.
+				transform.utils.atRecursionLimit ? userDefinedMin ?? 0 : { min, max },
+			);
 		});
 
 		return result;

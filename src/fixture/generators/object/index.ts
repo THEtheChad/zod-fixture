@@ -10,11 +10,9 @@ export const ObjectGenerator = Generator({
 
 		for (const key in shape) {
 			transform.utils.ifNotNever(shape[key], (schema) => {
-				transform.utils.recursionCheck(schema, () => {
-					result[key] = transform.fromSchema(schema, {
-						...context,
-						path: [...context.path, key],
-					});
+				result[key] = transform.fromSchema(schema, {
+					...context,
+					path: [...context.path, key],
 				});
 			});
 		}
@@ -48,18 +46,16 @@ export const RecordGenerator = Generator({
 
 		transform.utils.ifNotNever(def.keyType, (keyType) => {
 			transform.utils.ifNotNever(def.valueType, (valueType) => {
-				transform.utils.recursionCheck(valueType, () => {
-					transform.utils.n(() => {
-						const key = transform.fromSchema(keyType, context) as
-							| string
-							| number;
-						const value = transform.fromSchema(valueType, {
-							...context,
-							path: [...context.path, key],
-						});
+				if (transform.utils.atRecursionLimit) return;
 
-						result[key] = value;
+				transform.utils.n(() => {
+					const key = transform.fromSchema(keyType, context) as string | number;
+					const value = transform.fromSchema(valueType, {
+						...context,
+						path: [...context.path, key],
 					});
+
+					result[key] = value;
 				});
 			});
 		});
