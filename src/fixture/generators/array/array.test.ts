@@ -38,8 +38,7 @@ describe('create Arrays', () => {
 describe('regressions', () => {
 	const fixture = new Fixture();
 
-	// BUG: length can be overridden by min/max.
-	test.fails('lets length win over min and max', () => {
+	test('lets length win over min and max', () => {
 		expect(fixture).toReasonablySatisfy(
 			z.array(z.string()).min(1).max(10).length(5),
 		);

@@ -106,6 +106,31 @@ export class Utils {
 		return Array.from({ length }, (_, i) => factory(i));
 	}
 
+	/**
+	 * Call `add(factory())` until it has accepted `count` values, retrying
+	 * rejected (duplicate) values a bounded number of times. Returns how many
+	 * values were accepted, which is less than `count` when the value space is
+	 * too small.
+	 */
+	distinct<T>(
+		count: number,
+		factory: () => T,
+		add: (value: T) => boolean,
+	): number {
+		let accepted = 0;
+		let rejected = 0;
+		// Collecting every one of `count` values takes about count·ln(count)
+		// draws (the coupon collector problem); leave plenty of headroom.
+		const maxRejections = Math.ceil(count * (Math.log(count + 1) + 10)) + 10;
+
+		while (accepted < count && rejected < maxRejections) {
+			if (add(factory())) accepted++;
+			else rejected++;
+		}
+
+		return accepted;
+	}
+
 	ifNotNever<TSchema extends ZodTypeAny>(
 		schema: TSchema | null | undefined,
 		action: (schema: TSchema) => unknown,

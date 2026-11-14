@@ -1,4 +1,4 @@
-import { Fixture } from '@/fixture';
+import { Fixture, UnconstrainedFixture } from '@/fixture';
 import { ConstrainedTransformer } from '@/transformer/transformer';
 import { describe, expect, test } from 'vitest';
 import { z } from 'zod';
@@ -168,16 +168,43 @@ describe('create Records', () => {
 describe('regressions', () => {
 	const fixture = new Fixture();
 
-	// BUG: the extra passthrough/catchall key is a random lorem word that can collide with a declared key.
-	test.fails('never overwrites a declared key with a passthrough key', () => {
+	test('never overwrites a declared key with a passthrough key', () => {
 		expect(fixture).toReasonablySatisfy(
 			z.object({ dolor: z.number() }).passthrough(),
 		);
 	});
 
-	test.fails('never overwrites a declared key with a catchall key', () => {
+	test('never overwrites a declared key with a catchall key', () => {
 		expect(fixture).toReasonablySatisfy(
 			z.object({ dolor: z.number() }).catchall(z.string()),
 		);
+	});
+
+	test.each([
+		['an enum', z.enum(['a', 'b', 'c', 'd', 'e']), ['a', 'b', 'c', 'd', 'e']],
+		[
+			'a union of literals',
+			z.union([z.literal('x'), z.literal('y')]),
+			['x', 'y'],
+		],
+	])('fills a record keyed by %s with every key', (_, keyType, keys) => {
+		const schema = z.record(keyType, z.number());
+		for (const fixture of [new Fixture(), new UnconstrainedFixture()]) {
+			for (let seed = 0; seed < 20; seed++) {
+				expect(
+					Object.keys(fixture.fromSchema(schema, { seed }) as object).sort(),
+				).toEqual(keys);
+			}
+		}
+	});
+
+	test('uses lorem words without punctuation as passthrough keys', () => {
+		for (let seed = 0; seed < 200; seed++) {
+			const keys = Object.keys(
+				fixture.fromSchema(z.object({}).passthrough(), { seed }) as object,
+			);
+			expect(keys).toHaveLength(1);
+			expect(keys[0]).toMatch(/^[a-z]+$/);
+		}
 	});
 });

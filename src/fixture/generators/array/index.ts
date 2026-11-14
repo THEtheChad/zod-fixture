@@ -4,8 +4,9 @@ import { Generator } from '@/transformer/generator';
 export const ArrayGenerator = Generator({
 	schema: ZodArray,
 	output: ({ def, transform, context }) => {
-		const userDefinedMin = def.minLength?.value ?? def.exactLength?.value;
-		const userDefinedMax = def.maxLength?.value ?? def.exactLength?.value;
+		// An exact length overrides min and max.
+		const userDefinedMin = def.exactLength?.value ?? def.minLength?.value;
+		const userDefinedMax = def.exactLength?.value ?? def.maxLength?.value;
 
 		const min = transform.utils.resolveValue({
 			initial: userDefinedMin,

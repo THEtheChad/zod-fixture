@@ -14,15 +14,21 @@ export const MapGenerator = Generator({
 			transform.utils.ifNotNever(value, (valueSchema) => {
 				if (transform.utils.atRecursionLimit) return;
 
-				transform.utils.n(() => {
-					const k = transform.fromSchema(keySchema, context) as string | number;
-					const v = transform.fromSchema(valueSchema, {
-						...context,
-						path: [...context.path, k],
-					});
-
-					map.set(k, v);
-				}, transform.defaults.map);
+				transform.utils.distinct(
+					transform.utils.random.int(transform.defaults.map),
+					() => transform.fromSchema(keySchema, context) as string | number,
+					(k) => {
+						if (map.has(k)) return false;
+						map.set(
+							k,
+							transform.fromSchema(valueSchema, {
+								...context,
+								path: [...context.path, k],
+							}),
+						);
+						return true;
+					},
+				);
 			});
 		});
 

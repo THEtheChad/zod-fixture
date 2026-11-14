@@ -26,18 +26,33 @@ export const SetGenerator = Generator({
 		const result = new Set<InferZodType<typeof def.valueType>>();
 
 		transform.utils.ifNotNever(def.valueType, (valueType) => {
-			transform.utils.n(
-				() => {
-					result.add(
-						transform.fromSchema(valueType, {
-							...context,
-							path: [...context.path, result.size],
-						}),
-					);
+			// At the recursion limit, use the smallest size the schema allows.
+			const size = transform.utils.atRecursionLimit
+				? userDefinedMin ?? 0
+				: transform.utils.random.int({ min, max });
+
+			transform.utils.distinct(
+				size,
+				() =>
+					transform.fromSchema(valueType, {
+						...context,
+						path: [...context.path, result.size],
+					}),
+				(value) => {
+					if (result.has(value)) return false;
+					result.add(value);
+					return true;
 				},
-				// At the recursion limit, use the smallest size the schema allows.
-				transform.utils.atRecursionLimit ? userDefinedMin ?? 0 : { min, max },
 			);
+
+			// Zod checks the size of the input set; transformed values can
+			// collapse into fewer outputs, which is still a valid result.
+			const transformed = valueType._def.typeName === 'ZodEffects';
+			if (!transformed && result.size < (userDefinedMin ?? 0)) {
+				throw new Error(
+					`Unable to generate a set of at least ${userDefinedMin} distinct values: only found ${result.size}.`,
+				);
+			}
 		});
 
 		return result;

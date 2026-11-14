@@ -36,23 +36,41 @@ describe('create Sets', () => {
 describe('regressions', () => {
 	const fixture = new Fixture();
 
-	// BUG: sets add n values once and dedupe, so they come out under-filled.
-	test.fails('fills a set from a small value space', () => {
+	test('fills a set from a small value space', () => {
 		expect(fixture).toReasonablySatisfy(z.set(z.boolean()).size(2));
 	});
 
-	test.fails('fills a set from an enum', () => {
+	test('fills a set from an enum', () => {
 		expect(fixture).toReasonablySatisfy(z.set(z.enum(['a', 'b', 'c'])).min(3));
 	});
 
-	test.fails('fills a set from a narrow int range', () => {
+	test('fills a set from a narrow int range', () => {
 		expect(fixture).toReasonablySatisfy(
 			z.set(z.number().int().min(0).max(3)).min(3),
 		);
 	});
 
-	// BUG: an unsatisfiable set size silently returns an under-filled set.
-	test.fails('throws when the value space is too small', () => {
+	test('throws when the value space is too small', () => {
 		expect(() => fixture.fromSchema(z.set(z.boolean()).min(3))).toThrow();
+	});
+
+	test('explains a value space that is too small', () => {
+		expect(() => fixture.fromSchema(z.set(z.boolean()).min(3))).toThrowError(
+			'Unable to generate a set of at least 3 distinct values: only found 2.',
+		);
+	});
+
+	test('fills a large exact set', () => {
+		expect(fixture).toReasonablySatisfy(
+			z.set(z.number().int().min(0).max(199)).size(200),
+			200,
+		);
+	});
+
+	test('allows transformed values to collapse', () => {
+		const schema = z
+			.set(z.enum(['a', 'b']).transform((value) => value.length))
+			.min(2);
+		expect(fixture.fromSchema(schema)).toEqual(new Set([1]));
 	});
 });
