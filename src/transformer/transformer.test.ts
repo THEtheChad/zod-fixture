@@ -16,7 +16,7 @@ describe('transform', () => {
 
 	test('creates a fixture', () => {
 		const transform = new ConstrainedTransformer().extend(
-			DEFAULT_FIXTURE_GENERATORS
+			DEFAULT_FIXTURE_GENERATORS,
 		);
 		const PersonSchema = z.object({
 			name: z.string(),
@@ -35,7 +35,7 @@ describe('transform', () => {
 
 	test('throws when schema missing', () => {
 		const generators = [...DEFAULT_FIXTURE_GENERATORS].filter(
-			(g) => g !== StringGenerator
+			(g) => g !== StringGenerator,
 		);
 		const transform = new ConstrainedTransformer().extend(generators);
 		const PersonSchema = z.object({
@@ -51,7 +51,7 @@ describe('transform', () => {
 		});
 
 		expect(() => transform.fromSchema(PersonSchema)).toThrow(
-			/No generator found for ZodString/i
+			/No generator found for ZodString/i,
 		);
 	});
 
