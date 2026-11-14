@@ -63,8 +63,7 @@ describe('create enums', () => {
 describe('regressions', () => {
 	const fixture = new Fixture();
 
-	// BUG: numeric-looking keys are treated as reverse mappings and dropped.
-	test.fails('supports a native enum with numeric-looking keys', () => {
+	test('supports a native enum with numeric-looking keys', () => {
 		expect(fixture).toReasonablySatisfy(
 			z.nativeEnum({ '0': 'zero', '1': 'one' } as const),
 		);

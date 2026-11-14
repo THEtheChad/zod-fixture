@@ -1,6 +1,13 @@
 import { ZodString } from '@/internal/zod';
 import { Generator } from '@/transformer/generator';
-import { expect, test } from 'vitest';
+import type {
+	Context,
+	Defaults,
+	Definition,
+	PartialDefaults,
+	Runner,
+} from '@/public';
+import { expect, expectTypeOf, test } from 'vitest';
 import { z } from 'zod';
 import { Fixture, createFixture } from './fixture';
 
@@ -407,4 +414,15 @@ test.fails('supports pipe()', () => {
 
 test.fails('supports catch()', () => {
 	expect(new Fixture()).toReasonablySatisfy(z.string().catch('fallback'));
+});
+
+test('exports the public types', () => {
+	const defaults: PartialDefaults = { string: { min: 1 } };
+	const context: Context = { path: ['a', 0] };
+
+	expect(defaults.string?.min).toBe(1);
+	expect(context.path).toHaveLength(2);
+	expectTypeOf<Defaults['string']['characterSet']>().toEqualTypeOf<string>();
+	expectTypeOf<Definition['output']>().parameter(0).toHaveProperty('transform');
+	expectTypeOf<Runner['defaults']>().toEqualTypeOf<Defaults>();
 });

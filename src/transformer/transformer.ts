@@ -1,5 +1,5 @@
 import type { ZodTypeAny } from '@/internal/zod';
-import type { Defaults } from './defaults';
+import type { Defaults, PartialDefaults } from './defaults';
 import { constrained, randomSeed, unconstrained } from './defaults';
 import type { Definition } from './generator';
 import { Runner } from './runner';
@@ -9,7 +9,7 @@ export abstract class Transformer {
 	abstract readonly generators: Definition[];
 	abstract readonly transformerDefaults: Defaults;
 
-	constructor(readonly instanceDefaults?: Partial<Defaults>) {
+	constructor(readonly instanceDefaults?: PartialDefaults) {
 		this.instanceDefaults = { seed: randomSeed(), ...instanceDefaults };
 	}
 
@@ -24,13 +24,13 @@ export abstract class Transformer {
 
 	fromSchema<TSchema extends ZodTypeAny>(
 		schema: TSchema,
-		instanceDefaults?: Partial<Defaults>,
+		instanceDefaults?: PartialDefaults,
 	): unknown {
 		return new Runner(this, instanceDefaults).fromSchema(schema);
 	}
 
 	missingGeneratorError(schema: ZodTypeAny) {
-		return new Error(`No generator found for ${schema.constructor.name}.`);
+		return new Error(`No generator found for ${schemaName(schema)}.`);
 	}
 }
 
@@ -44,4 +44,12 @@ export class UnconstrainedTransformer extends Transformer {
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	generators: Definition[] = [];
 	transformerDefaults: Defaults = unconstrained;
+}
+
+/**
+ * The schema's Zod type name. Class names can be mangled by minifiers, so
+ * prefer `_def.typeName`.
+ */
+export function schemaName(schema: ZodTypeAny): string {
+	return schema._def?.typeName ?? schema.constructor.name;
 }

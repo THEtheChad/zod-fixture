@@ -87,8 +87,7 @@ describe('create empty types', () => {
 describe('regressions', () => {
 	const fixture = new Fixture();
 
-	// BUG: an optional never can try to generate never and throws.
-	test.fails('supports an optional never', () => {
+	test('supports an optional never', () => {
 		expect(fixture).toReasonablySatisfy(z.never().optional());
 	});
 });

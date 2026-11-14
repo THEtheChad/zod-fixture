@@ -247,7 +247,9 @@ export class Utils {
 		schema: ZodTypeAny,
 	): schema is TSchema {
 		return isZodConstructor(target)
-			? schema._def.typeName === target.name
+			? schema._def.typeName === target.name ||
+					// A real Zod class may have a minified name; fall back to instanceof.
+					(typeof target.prototype === 'object' && schema instanceof target)
 			: // If our generator was created with an instance, make sure it matches
 				// the schema we're trying to generate.
 				// This is particularly important for z.custom schemas.

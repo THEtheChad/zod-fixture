@@ -1,11 +1,20 @@
 import type { ZodTypeAny } from '@/internal/zod';
-import { ZodDiscriminatedUnion, ZodUnion } from '@/internal/zod';
+import { ZodDiscriminatedUnion, ZodNever, ZodUnion } from '@/internal/zod';
 import { Generator } from '@/transformer/generator';
 
 export const UnionGenerator = Generator({
 	schema: ZodUnion,
 	output: ({ def, transform, context }) => {
-		let options = def.options as readonly ZodTypeAny[];
+		// A never option can't produce a value.
+		let options = (def.options as readonly ZodTypeAny[]).filter(
+			(option) => !transform.utils.isType(ZodNever, option),
+		);
+		if (!options.length) {
+			const path = context.path.length ? ` at ${context.path.join('.')}` : '';
+			throw new Error(
+				`Unable to generate a value${path}: every option of the union is never.`,
+			);
+		}
 
 		if (transform.utils.atRecursionLimit) {
 			// Prefer options that can end the recursion.

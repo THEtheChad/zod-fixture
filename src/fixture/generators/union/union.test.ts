@@ -59,8 +59,15 @@ describe('create unions', () => {
 describe('regressions', () => {
 	const fixture = new Fixture();
 
-	// BUG: a never option can be picked and throws.
-	test.fails('skips never options', () => {
+	test('skips never options', () => {
 		expect(fixture).toReasonablySatisfy(z.union([z.string(), z.never()]));
+	});
+
+	test('explains a union of only never options', () => {
+		expect(() =>
+			fixture.fromSchema(z.object({ a: z.union([z.never(), z.never()]) })),
+		).toThrowError(
+			'Unable to generate a value at a: every option of the union is never.',
+		);
 	});
 });

@@ -1,5 +1,6 @@
 import type { ZodTypeAny } from '@/internal/zod';
-import type { Defaults } from './defaults';
+import type { Defaults, PartialDefaults } from './defaults';
+import { mergeDefaults } from './defaults';
 import type { Context } from './generator';
 import type { Transformer } from './transformer';
 import { Utils } from './utils';
@@ -10,13 +11,13 @@ export class Runner {
 
 	constructor(
 		public readonly transformer: Transformer,
-		schemaDefaults?: Partial<Defaults>,
+		schemaDefaults?: PartialDefaults,
 	) {
-		this.defaults = {
-			...transformer.transformerDefaults,
-			...transformer.instanceDefaults,
-			...schemaDefaults,
-		};
+		this.defaults = mergeDefaults(
+			transformer.transformerDefaults,
+			transformer.instanceDefaults,
+			schemaDefaults,
+		);
 		this.utils = new Utils(this);
 	}
 

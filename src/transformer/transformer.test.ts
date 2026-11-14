@@ -115,4 +115,29 @@ describe('transform', () => {
 			expect((result as schemaType).other).toBeTypeOf('number');
 		});
 	});
+
+	test('merges partial nested defaults with the transformer defaults', () => {
+		const transform = new ConstrainedTransformer({
+			string: { min: 3, max: 3 },
+		});
+		transform.extend(StringGenerator);
+
+		const instance = transform.fromSchema(z.string());
+		const schemaLevel = transform.fromSchema(z.string(), {
+			string: { max: 5 },
+		});
+
+		expect(instance).toMatch(/^[a-z-]{3}$/);
+		expect(schemaLevel).toMatch(/^[a-z-]{3,5}$/);
+	});
+
+	test('matches a generator for a Zod class with a minified name', () => {
+		// Minifiers can rename classes; `e` stands in for a mangled ZodString.
+		class e extends z.ZodString {}
+		const transform = new ConstrainedTransformer().extend(
+			Generator({ schema: e, output: () => 'matched' }),
+		);
+
+		expect(transform.fromSchema(new e(z.string()._def))).toBe('matched');
+	});
 });
