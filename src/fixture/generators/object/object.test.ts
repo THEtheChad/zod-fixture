@@ -50,7 +50,7 @@ describe('create objects', () => {
 			z.object({
 				str: z.string(),
 				num: z.number(),
-			})
+			}),
 		);
 	});
 
@@ -77,7 +77,7 @@ describe('create objects', () => {
 					num: z.number(),
 					str: z.string(),
 				}),
-			})
+			}),
 		);
 	});
 

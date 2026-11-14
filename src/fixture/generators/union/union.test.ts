@@ -23,13 +23,13 @@ describe('create unions', () => {
 
 	test('creates a union value', () => {
 		expect(
-			typeof transform.fromSchema(z.union([z.string(), z.number()]))
+			typeof transform.fromSchema(z.union([z.string(), z.number()])),
 		).toMatch(/^string|number$/);
 	});
 
 	test('creates a union value with the or syntax', () => {
 		expect(typeof transform.fromSchema(z.string().or(z.number()))).toMatch(
-			/^string|number$/
+			/^string|number$/,
 		);
 	});
 

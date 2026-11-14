@@ -23,7 +23,7 @@ describe('create Arrays', () => {
 
 	test('throws when min is greater than max', () => {
 		expect(() =>
-			transform.fromSchema(z.array(z.string()).min(10).max(5))
+			transform.fromSchema(z.array(z.string()).min(10).max(5)),
 		).toThrowError();
 	});
 
