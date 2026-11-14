@@ -3,6 +3,7 @@ import { ArrayGenerator } from './array';
 import { BigIntGenerator, BigIntMultipleOfGenerator } from './bigint';
 import { BooleanGenerator } from './boolean';
 import { BrandedGenerator } from './branded';
+import { CatchGenerator } from './catch';
 import { DateGenerator } from './date';
 import { DefaultGenerator } from './default';
 import {
@@ -23,6 +24,7 @@ import { NullableGenerator } from './nullable';
 import { NumberGenerator } from './number';
 import { ObjectGenerator, RecordGenerator } from './object';
 import { OptionalGenerator } from './optional';
+import { PipelineGenerator } from './pipeline';
 import { PromiseGenerator } from './promise';
 import { ReadonlyGenerator } from './readonly';
 import { SetGenerator } from './set';
@@ -91,6 +93,8 @@ export const DEFAULT_FIXTURE_GENERATORS = [
 	StringGenerator,
 	DefaultGenerator,
 	ReadonlyGenerator,
+	PipelineGenerator,
+	CatchGenerator,
 ];
 
 export {
@@ -100,6 +104,7 @@ export {
 	BigIntMultipleOfGenerator,
 	BooleanGenerator,
 	BrandedGenerator,
+	CatchGenerator,
 	Cuid2Generator,
 	CuidGenerator,
 	DateGenerator,
@@ -122,6 +127,7 @@ export {
 	NumberGenerator,
 	ObjectGenerator,
 	OptionalGenerator,
+	PipelineGenerator,
 	PreprocessGenerator,
 	PromiseGenerator,
 	ReadonlyGenerator,
