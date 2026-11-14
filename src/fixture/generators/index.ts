@@ -3,6 +3,7 @@ import { ArrayGenerator } from './array';
 import { BigIntGenerator, BigIntMultipleOfGenerator } from './bigint';
 import { BooleanGenerator } from './boolean';
 import { BrandedGenerator } from './branded';
+import { CatchGenerator } from './catch';
 import { DateGenerator } from './date';
 import { DefaultGenerator } from './default';
 import {
@@ -23,17 +24,26 @@ import { NullableGenerator } from './nullable';
 import { NumberGenerator } from './number';
 import { ObjectGenerator, RecordGenerator } from './object';
 import { OptionalGenerator } from './optional';
+import { PipelineGenerator } from './pipeline';
 import { PromiseGenerator } from './promise';
 import { ReadonlyGenerator } from './readonly';
 import { SetGenerator } from './set';
 import {
+	Base64Generator,
+	Base64UrlGenerator,
+	CidrGenerator,
 	Cuid2Generator,
 	CuidGenerator,
+	DateStringGenerator,
 	DateTimeGenerator,
+	DurationGenerator,
 	EmailGenerator,
 	IpGenerator,
+	JwtGenerator,
+	NanoidGenerator,
 	RegexGenerator,
 	StringGenerator,
+	TimeGenerator,
 	UlidGenerator,
 	UrlGenerator,
 	UuidGenerator,
@@ -73,6 +83,14 @@ export const DEFAULT_FIXTURE_GENERATORS = [
 	EmailGenerator,
 	UrlGenerator,
 	DateTimeGenerator,
+	DateStringGenerator,
+	TimeGenerator,
+	DurationGenerator,
+	Base64Generator,
+	Base64UrlGenerator,
+	NanoidGenerator,
+	JwtGenerator,
+	CidrGenerator,
 	RegexGenerator,
 	NullableGenerator,
 	TupleGenerator,
@@ -91,30 +109,40 @@ export const DEFAULT_FIXTURE_GENERATORS = [
 	StringGenerator,
 	DefaultGenerator,
 	ReadonlyGenerator,
+	PipelineGenerator,
+	CatchGenerator,
 ];
 
 export {
 	AnyGenerator,
 	ArrayGenerator,
+	Base64Generator,
+	Base64UrlGenerator,
 	BigIntGenerator,
 	BigIntMultipleOfGenerator,
 	BooleanGenerator,
 	BrandedGenerator,
+	CatchGenerator,
+	CidrGenerator,
 	Cuid2Generator,
 	CuidGenerator,
 	DateGenerator,
+	DateStringGenerator,
 	DateTimeGenerator,
 	DefaultGenerator,
 	DiscriminatedUnionGenerator,
+	DurationGenerator,
 	EmailGenerator,
 	EnumGenerator,
 	FunctionGenerator,
 	IntersectionGenerator,
 	IpGenerator,
+	JwtGenerator,
 	LazyGenerator,
 	LiteralGenerator,
 	MapGenerator,
 	NanGenerator,
+	NanoidGenerator,
 	NativeEnumGenerator,
 	NeverGenerator,
 	NullGenerator,
@@ -122,6 +150,7 @@ export {
 	NumberGenerator,
 	ObjectGenerator,
 	OptionalGenerator,
+	PipelineGenerator,
 	PreprocessGenerator,
 	PromiseGenerator,
 	ReadonlyGenerator,
@@ -131,6 +160,7 @@ export {
 	SetGenerator,
 	StringGenerator,
 	SymbolGenerator,
+	TimeGenerator,
 	TransformGenerator,
 	TupleGenerator,
 	UlidGenerator,

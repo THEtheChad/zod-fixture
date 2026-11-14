@@ -22,11 +22,13 @@ export class RegExCache {
 				? this.string.get(pattern)
 				: this.regex.get(pattern);
 
-		if (!result && factory) {
+		if (!result) {
+			if (!factory) {
+				throw new Error(`No value for ${pattern} and no fallback available.`);
+			}
+
 			result = factory(new RandExp(pattern));
 			this.set(pattern, result);
-		} else {
-			throw new Error(`No value for ${pattern} and no fallback available.`);
 		}
 
 		return result;

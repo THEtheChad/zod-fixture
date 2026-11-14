@@ -12,19 +12,23 @@ export const MapGenerator = Generator({
 
 		transform.utils.ifNotNever(key, (keySchema) => {
 			transform.utils.ifNotNever(value, (valueSchema) => {
-				transform.utils.recursionCheck(valueSchema, () => {
-					transform.utils.n(() => {
-						const k = transform.fromSchema(keySchema, context) as
-							| string
-							| number;
-						const v = transform.fromSchema(valueSchema, {
-							...context,
-							path: [...context.path, k],
-						});
+				if (transform.utils.atRecursionLimit) return;
 
-						map.set(k, v);
-					}, transform.defaults.map);
-				});
+				transform.utils.distinct(
+					transform.utils.random.int(transform.defaults.map),
+					() => transform.fromSchema(keySchema, context) as string | number,
+					(k) => {
+						if (map.has(k)) return false;
+						map.set(
+							k,
+							transform.fromSchema(valueSchema, {
+								...context,
+								path: [...context.path, k],
+							}),
+						);
+						return true;
+					},
+				);
 			});
 		});
 
