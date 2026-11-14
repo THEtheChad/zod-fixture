@@ -274,20 +274,19 @@ describe('regressions', () => {
 		);
 	});
 
-	// BUG: formatString pads/slices formatted values into invalid ones.
-	test.fails('keeps an email valid with a long min', () => {
+	test('keeps an email valid with a long min', () => {
 		expect(fixture).toReasonablySatisfy(z.string().email().min(25));
 	});
 
-	test.fails('keeps an email valid with a short max', () => {
+	test('keeps an email valid with a short max', () => {
 		expect(fixture).toReasonablySatisfy(z.string().email().max(10));
 	});
 
-	test.fails('keeps a url valid with a short max', () => {
+	test('keeps a url valid with a short max', () => {
 		expect(fixture).toReasonablySatisfy(z.string().url().max(8));
 	});
 
-	test.fails('keeps a regex match valid with a long min', () => {
+	test('keeps a regex match valid with a long min', () => {
 		expect(fixture).toReasonablySatisfy(
 			z
 				.string()
@@ -296,45 +295,43 @@ describe('regressions', () => {
 		);
 	});
 
-	test.fails('supports a startsWith longer than the default length', () => {
+	test('supports a startsWith longer than the default length', () => {
 		expect(fixture).toReasonablySatisfy(
 			z.string().startsWith('abcdefghijklmnopqrst'),
 		);
 	});
 
-	test.fails('keeps an email valid with endsWith', () => {
+	test('keeps an email valid with endsWith', () => {
 		expect(fixture).toReasonablySatisfy(
 			z.string().email().endsWith('@acme.io'),
 		);
 	});
 
-	// BUG: affixes are used as String.replace patterns.
-	test.fails('treats affixes literally', () => {
+	test('treats affixes literally', () => {
 		expect(fixture).toReasonablySatisfy(
 			z.string().startsWith('$&').endsWith('$$'),
 		);
 	});
 
-	// BUG: the includes position is ignored.
-	test.fails('respects includes with a position', () => {
+	test('respects includes with a position', () => {
 		expect(fixture).toReasonablySatisfy(
 			z.string().includes('abc', { position: 10 }),
 		);
 	});
 
-	// BUG: only the first check of each kind is used.
-	test.fails('respects the tightest of repeated min checks', () => {
+	test('respects the tightest of repeated min checks', () => {
 		expect(fixture).toReasonablySatisfy(z.string().min(1).min(20));
 	});
 
-	// BUG: unsatisfiable strings silently return invalid values.
-	test.fails('throws when includes cannot fit the length', () => {
+	test('throws when includes cannot fit the length', () => {
 		expect(() =>
 			fixture.fromSchema(z.string().length(3).includes('abcd')),
-		).toThrow();
+		).toThrowError(
+			'Unable to generate a string with min length 3, max length 3, includes "abcd".',
+		);
 	});
 
-	test.fails('throws when affixes cannot fit the length', () => {
+	test('throws when affixes cannot fit the length', () => {
 		expect(() =>
 			fixture.fromSchema(
 				z.string().startsWith('abc').endsWith('xyz').length(4),
@@ -342,10 +339,12 @@ describe('regressions', () => {
 		).toThrow();
 	});
 
-	test.fails('throws when an ip cannot fit the max', () => {
+	test('throws when an ip cannot fit the max', () => {
 		expect(() =>
 			fixture.fromSchema(z.string().ip({ version: 'v4' }).max(5)),
-		).toThrow();
+		).toThrowError(
+			'Unable to generate a string in ip format with max length 5.',
+		);
 	});
 
 	// BUG: these string formats fall through to random letters.
@@ -376,5 +375,133 @@ describe('regressions', () => {
 
 	test.fails('respects datetime precision 6', () => {
 		expect(fixture).toReasonablySatisfy(z.string().datetime({ precision: 6 }));
+	});
+
+	test('fills an odd emoji length', () => {
+		expect(fixture).toReasonablySatisfy(z.string().emoji().length(5));
+	});
+
+	test('respects a cuid2 length', () => {
+		expect(fixture).toReasonablySatisfy(z.string().cuid2().length(10));
+	});
+
+	test('upper-cases a uuid', () => {
+		expect(fixture).toReasonablySatisfy(z.string().uuid().toUpperCase());
+	});
+
+	test('overlaps affixes to fit the length', () => {
+		expect(
+			fixture.fromSchema(
+				z.string().startsWith('abc').endsWith('bcd').length(4),
+			),
+		).toBe('abcd');
+	});
+
+	test('fits a regex match to an exact length', () => {
+		expect(fixture).toReasonablySatisfy(z.string().regex(/^\d+$/).length(8));
+	});
+
+	test('fits several includes within the max', () => {
+		expect(fixture).toReasonablySatisfy(
+			z.string().includes('foo').includes('bar').max(10),
+		);
+	});
+
+	test('keeps an email valid with startsWith', () => {
+		expect(fixture).toReasonablySatisfy(z.string().email().startsWith('admin'));
+	});
+
+	test('keeps the default email for an unconstrained schema', () => {
+		expect(fixture.fromSchema(z.string().email())).toBe('rando@email.com');
+	});
+
+	test.each([
+		[
+			'includes at a position after an equal prefix',
+			z.string().startsWith('abc').includes('abc', { position: 3 }).length(6),
+		],
+		[
+			'overlapping includes',
+			z.string().includes('abc').includes('bcd').length(4),
+		],
+		['url with endsWith', z.string().url().endsWith('/api')],
+		['url with a host prefix', z.string().url().startsWith('https://api.')],
+		['url with a scheme prefix', z.string().url().startsWith('ftp')],
+		['long regex matches', z.string().regex(/^a+$/).min(150)],
+		[
+			'email whose prefix is the local part',
+			z.string().email().startsWith('a').length(6),
+		],
+	])('supports %s', (_, schema) => {
+		expect(fixture).toReasonablySatisfy(schema);
+	});
+
+	test('validates checks before trim, like Zod', () => {
+		expect(fixture.fromSchema(z.string().endsWith('   ').trim())).toMatch(
+			/^\S+$/,
+		);
+	});
+
+	test('throws with the reason when no candidate passes', () => {
+		expect(() =>
+			fixture.fromSchema(z.string().toLowerCase().startsWith('AB')),
+		).toThrowError(
+			'Unable to generate a valid string: Invalid input: must start with "AB".',
+		);
+	});
+
+	test.each([
+		['an ipv4 address with max 7', z.string().ip({ version: 'v4' }).max(7)],
+		[
+			'an ipv4 address with length 9',
+			z.string().ip({ version: 'v4' }).length(9),
+		],
+		['an ip of either version with max 12', z.string().ip().max(12)],
+		['a url with length 2', z.string().url().length(2)],
+		['an email whose prefix includes @', z.string().email().startsWith('a@')],
+		[
+			'an email whose prefix includes the domain',
+			z.string().email().startsWith('a@ex.io'),
+		],
+		[
+			'several regex checks',
+			z
+				.string()
+				.regex(/^[a-z]+$/)
+				.regex(/^z+$/)
+				.max(5),
+		],
+	])('fits %s', (_, schema) => {
+		expect(fixture).toReasonablySatisfy(schema);
+	});
+
+	test.each([
+		['an email with includes', z.string().email().includes('+')],
+		[
+			'an email whose prefix ends with @',
+			z.string().email().startsWith('admin@'),
+		],
+		[
+			'a regex with startsWith',
+			z
+				.string()
+				.regex(/^[a-z]+$/)
+				.startsWith('ab'),
+		],
+		[
+			'a slug regex within a length range',
+			z
+				.string()
+				.regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
+				.min(3)
+				.max(64),
+		],
+		[
+			'includes overlapping endsWith',
+			z.string().includes('xyz').endsWith('yz!').max(5),
+		],
+		['a uuid with endsWith', z.string().uuid().endsWith('a')],
+	])('generates %s', (_, schema) => {
+		expect(fixture).toReasonablySatisfy(schema);
 	});
 });
