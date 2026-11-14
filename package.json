@@ -63,7 +63,7 @@
 	"private": false,
 	"sideEffects": false,
 	"peerDependencies": {
-		"zod": ">=3.0.0"
+		"zod": "^3.22.0"
 	},
 	"dependencies": {
 		"randexp": "^0.5.3"

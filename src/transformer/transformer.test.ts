@@ -14,6 +14,23 @@ describe('transform', () => {
 		expect(() => transform.fromSchema(input)).toThrowError(input._def.typeName);
 	});
 
+	test.each([
+		// Zod 4 classic: internals on `_zod`, `_def.type` instead of `typeName`.
+		['zod', { _zod: { def: { type: 'string' } }, _def: { type: 'string' } }],
+		// zod/mini: no `_def` at all.
+		['zod/mini', { _zod: { def: { type: 'string' } } }],
+	])('explains that %s 4 schemas are not supported', (_, zod4String) => {
+		const transform = new ConstrainedTransformer().extend(
+			DEFAULT_FIXTURE_GENERATORS,
+		);
+
+		expect(() =>
+			transform.fromSchema(zod4String as unknown as z.ZodTypeAny),
+		).toThrowError(
+			'Received a Zod 4 schema (string), but zod-fixture supports Zod 3 schemas only.',
+		);
+	});
+
 	test('creates a fixture', () => {
 		const transform = new ConstrainedTransformer().extend(
 			DEFAULT_FIXTURE_GENERATORS,
