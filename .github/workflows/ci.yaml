@@ -74,9 +74,9 @@ jobs:
       - name: 🏗️ Build
         run: npm run build
       - name: 🚀 Release
-        uses: cycjimmy/semantic-release-action@v3
+        uses: cycjimmy/semantic-release-action@v8
         with:
-          semantic_version: 16
+          semantic_version: 25
           branches: |
             [
               'main',
