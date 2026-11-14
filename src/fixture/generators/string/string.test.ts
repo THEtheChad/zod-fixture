@@ -347,33 +347,31 @@ describe('regressions', () => {
 		);
 	});
 
-	// BUG: these string formats fall through to random letters.
-	test.fails('supports date()', () => {
+	test('supports date()', () => {
 		expect(fixture).toReasonablySatisfy(z.string().date());
 	});
 
-	test.fails('supports time()', () => {
+	test('supports time()', () => {
 		expect(fixture).toReasonablySatisfy(z.string().time());
 	});
 
-	test.fails('supports duration()', () => {
+	test('supports duration()', () => {
 		expect(fixture).toReasonablySatisfy(z.string().duration());
 	});
 
-	test.fails('supports base64()', () => {
+	test('supports base64()', () => {
 		expect(fixture).toReasonablySatisfy(z.string().base64());
 	});
 
-	test.fails('supports nanoid()', () => {
+	test('supports nanoid()', () => {
 		expect(fixture).toReasonablySatisfy(z.string().nanoid());
 	});
 
-	// BUG: datetime precision is ignored.
-	test.fails('respects datetime precision 0', () => {
+	test('respects datetime precision 0', () => {
 		expect(fixture).toReasonablySatisfy(z.string().datetime({ precision: 0 }));
 	});
 
-	test.fails('respects datetime precision 6', () => {
+	test('respects datetime precision 6', () => {
 		expect(fixture).toReasonablySatisfy(z.string().datetime({ precision: 6 }));
 	});
 
@@ -432,6 +430,26 @@ describe('regressions', () => {
 			'email whose prefix is the local part',
 			z.string().email().startsWith('a').length(6),
 		],
+	])('supports %s', (_, schema) => {
+		expect(fixture).toReasonablySatisfy(schema);
+	});
+
+	test.each([
+		['time() with precision 3', z.string().time({ precision: 3 })],
+		['time() with precision 0', z.string().time({ precision: 0 })],
+		[
+			'datetime() with offset and precision',
+			z.string().datetime({ offset: true, precision: 2 }),
+		],
+		['datetime() with local', z.string().datetime({ local: true })],
+		['base64() with a length', z.string().base64().length(12)],
+		['base64url()', z.string().base64url()],
+		['base64url() with a max', z.string().base64url().max(6)],
+		['jwt()', z.string().jwt()],
+		['jwt() with an algorithm', z.string().jwt({ alg: 'RS256' })],
+		['cidr()', z.string().cidr()],
+		['cidr() v4', z.string().cidr({ version: 'v4' })],
+		['cidr() v6', z.string().cidr({ version: 'v6' })],
 	])('supports %s', (_, schema) => {
 		expect(fixture).toReasonablySatisfy(schema);
 	});
@@ -502,6 +520,45 @@ describe('regressions', () => {
 		],
 		['a uuid with endsWith', z.string().uuid().endsWith('a')],
 	])('generates %s', (_, schema) => {
+		expect(fixture).toReasonablySatisfy(schema);
+	});
+
+	test('throws when a nanoid cannot fit the length', () => {
+		expect(() => fixture.fromSchema(z.string().nanoid().max(10))).toThrowError(
+			'Unable to generate a string in nanoid format with max length 10.',
+		);
+	});
+
+	test.each([
+		['time() with length 5', z.string().time().length(5)],
+		['time() with length 8', z.string().time().length(8)],
+		['time() with length 14', z.string().time().length(14)],
+		['duration() with max 3', z.string().duration().max(3)],
+		['duration() with min 30', z.string().duration().min(30)],
+	])('fits %s', (_, schema) => {
+		expect(fixture).toReasonablySatisfy(schema);
+	});
+
+	test.each([
+		['datetime() with length 17', z.string().datetime().length(17)],
+		['datetime() with length 20', z.string().datetime().length(20)],
+		['datetime() with length 26', z.string().datetime().length(26)],
+	])('fits %s', (_, schema) => {
+		expect(fixture).toReasonablySatisfy(schema);
+	});
+
+	test.each([
+		['jwt() with max 100', z.string().jwt().max(100)],
+		['jwt() with min 300', z.string().jwt().min(300)],
+		['cidr() v4 with max 10', z.string().cidr({ version: 'v4' }).max(10)],
+		['cidr() v4 with length 18', z.string().cidr({ version: 'v4' }).length(18)],
+		['cidr() with max 12', z.string().cidr().max(12)],
+		[
+			'cidr() with endsWith',
+			z.string().cidr({ version: 'v4' }).endsWith('/24'),
+		],
+		['date() with endsWith', z.string().date().endsWith('-01')],
+	])('fits %s', (_, schema) => {
 		expect(fixture).toReasonablySatisfy(schema);
 	});
 });

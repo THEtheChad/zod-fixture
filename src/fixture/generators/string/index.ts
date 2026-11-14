@@ -499,6 +499,38 @@ export const CuidGenerator = Generator({
 		fixedFormat(schema, def, 'cuid', () => transform.utils.random.cuid()),
 });
 
+function randomIp(transform: Runner, version: 'v4' | 'v6'): string {
+	const { random } = transform.utils;
+	if (version === 'v4') {
+		return transform.utils
+			.n(() => random.int({ min: 1, max: 255 }), 4)
+			.join('.');
+	}
+
+	return transform.utils
+		.n(() => random.int({ min: 0, max: 65535 }).toString(16), 8)
+		.join(':');
+}
+
+/** An IPv4 address of exactly `length` (7–15) characters. */
+function ipv4OfLength(transform: Runner, length: number): string {
+	const { random } = transform.utils;
+	// Size the octets (1–3 digits each) to fit.
+	const digits = [1, 1, 1, 1];
+	for (let extra = length - 7; extra > 0; extra--) {
+		const open = digits.flatMap((count, index) => (count < 3 ? [index] : []));
+		const index = random.from(open);
+		digits[index] = (digits[index] as number) + 1;
+	}
+	const ranges = { 1: [0, 9], 2: [10, 99], 3: [100, 255] } as const;
+	return digits
+		.map((count) => {
+			const [min, max] = ranges[count as 1 | 2 | 3];
+			return random.int({ min, max });
+		})
+		.join('.');
+}
+
 export const IpGenerator = Generator({
 	schema: ZodString,
 	filter: ({ def, transform }) => transform.utils.checks(def.checks).has('ip'),
@@ -532,21 +564,52 @@ export const IpGenerator = Generator({
 			if (length === undefined || length < 7 || length > 15) {
 				throw unsatisfiable('ip', constraints);
 			}
-			const digits = [1, 1, 1, 1];
-			for (let extra = length - 7; extra > 0; extra--) {
-				const open = digits.flatMap((count, index) =>
-					count < 3 ? [index] : [],
-				);
-				const index = random.from(open);
-				digits[index] = (digits[index] as number) + 1;
+			return ipv4OfLength(transform, length);
+		});
+	},
+});
+
+export const CidrGenerator = Generator({
+	schema: ZodString,
+	filter: ({ def, transform }) =>
+		transform.utils.checks(def.checks).has('cidr'),
+	output: ({ schema, def, transform }) => {
+		const constraints = constraintsOf(def);
+		const { random } = transform.utils;
+		const requested = transform.utils.checks(def.checks).find('cidr')?.version;
+
+		return fixedFormat(schema, def, 'cidr', () => {
+			const constrained =
+				constraints.min !== undefined || constraints.max !== undefined;
+			// An IPv6 CIDR here is 41+ characters; prefer IPv4 when it can't fit.
+			const version =
+				requested ??
+				(constraints.max !== undefined && constraints.max < 41
+					? 'v4'
+					: random.from(['v4', 'v6'] as const));
+
+			if (version === 'v6' || !constrained) {
+				const prefix = random.int({ min: 0, max: version === 'v4' ? 32 : 128 });
+				return `${randomIp(transform, version)}/${prefix}`;
 			}
-			const ranges = { 1: [0, 9], 2: [10, 99], 3: [100, 255] } as const;
-			return digits
-				.map((count) => {
-					const [min, max] = ranges[count as 1 | 2 | 3];
-					return random.int({ min, max });
-				})
-				.join('.');
+
+			// "1.2.3.4/0" (9) to "255.255.255.255/32" (18).
+			const length = pickLength(transform, constraints, { min: 9, max: 18 });
+			if (length === undefined || length < 9 || length > 18) {
+				throw unsatisfiable('cidr', constraints);
+			}
+			// A 1- or 2-digit prefix, leaving a 7–15 character address.
+			const prefixDigits = random.from(
+				[1, 2].filter((digits) => {
+					const address = length - 1 - digits;
+					return address >= 7 && address <= 15;
+				}),
+			);
+			const prefix =
+				prefixDigits === 1
+					? random.int({ min: 0, max: 9 })
+					: random.int({ min: 10, max: 32 });
+			return `${ipv4OfLength(transform, length - 1 - prefixDigits)}/${prefix}`;
 		});
 	},
 });
@@ -571,11 +634,242 @@ export const Cuid2Generator = Generator({
 	},
 });
 
+/** `digits` random decimal digits. */
+function randomDigits(transform: Runner, digits: number): string {
+	let result = '';
+	while (result.length < digits) {
+		result += transform.utils.random.int({ min: 0, max: 9 });
+	}
+	return result;
+}
+
+/**
+ * "HH:MM:SS" plus a fraction of `precision` digits. Without a precision the
+ * milliseconds are kept, matching `Date#toISOString`.
+ */
+function timeOf(
+	transform: Runner,
+	iso: string,
+	precision: number | null | undefined,
+): string {
+	const seconds = iso.slice(11, 19);
+	const millis = iso.slice(20, 23);
+
+	if (precision == null) return `${seconds}.${millis}`;
+	if (precision === 0) return seconds;
+	if (precision <= 3) return `${seconds}.${millis.slice(0, precision)}`;
+	return `${seconds}.${millis}${randomDigits(transform, precision - 3)}`;
+}
+
 export const DateTimeGenerator = Generator({
 	schema: ZodString,
 	filter: ({ def, transform }) =>
 		transform.utils.checks(def.checks).has('datetime'),
-	output: ({ transform }) => transform.utils.random.date().toISOString(),
+	output: ({ schema, def, transform }) => {
+		const check = transform.utils.checks(def.checks).find('datetime');
+
+		const { min, max } = constraintsOf(def);
+
+		return fixedFormat(schema, def, 'datetime', () => {
+			const iso = transform.utils.random.date().toISOString();
+			if (check?.precision != null) {
+				const time = timeOf(transform, iso, check.precision);
+				return `${iso.slice(0, 10)}T${time}Z`;
+			}
+			if (min === undefined && max === undefined) return iso;
+
+			// Without a precision, seconds and fraction digits are optional:
+			// "…THH:MMZ" (17), "…THH:MM:SSZ" (20) or "…THH:MM:SS.f…Z" (22+).
+			const length = Math.max(min ?? 0, Math.min(max ?? 24, 24));
+			if (length < 20) return `${iso.slice(0, 16)}Z`;
+			if (length < 22) return `${iso.slice(0, 19)}Z`;
+			return `${iso.slice(0, 19)}.${randomDigits(transform, length - 21)}Z`;
+		});
+	},
+});
+
+export const DateStringGenerator = Generator({
+	schema: ZodString,
+	filter: ({ def, transform }) =>
+		transform.utils.checks(def.checks).has('date'),
+	output: ({ schema, def, transform }) =>
+		fixedFormat(schema, def, 'date', () =>
+			transform.utils.random.date().toISOString().slice(0, 10),
+		),
+});
+
+export const TimeGenerator = Generator({
+	schema: ZodString,
+	filter: ({ def, transform }) =>
+		transform.utils.checks(def.checks).has('time'),
+	output: ({ schema, def, transform }) => {
+		const precision = transform.utils
+			.checks(def.checks)
+			.find('time')?.precision;
+
+		const { min, max } = constraintsOf(def);
+
+		return fixedFormat(schema, def, 'time', () => {
+			const iso = transform.utils.random.date().toISOString();
+			if (precision != null || (min === undefined && max === undefined)) {
+				return timeOf(transform, iso, precision);
+			}
+
+			// Without a precision, seconds and fraction digits are optional:
+			// "HH:MM", "HH:MM:SS" or "HH:MM:SS.f…" fit most length checks.
+			const length = Math.max(min ?? 0, Math.min(max ?? 12, 12));
+			if (length < 8) return iso.slice(11, 16);
+			if (length < 10) return iso.slice(11, 19);
+			return `${iso.slice(11, 19)}.${randomDigits(transform, length - 9)}`;
+		});
+	},
+});
+
+export const DurationGenerator = Generator({
+	schema: ZodString,
+	filter: ({ def, transform }) =>
+		transform.utils.checks(def.checks).has('duration'),
+	output: ({ schema, def, transform }) =>
+		fixedFormat(schema, def, 'duration', () => {
+			const { min, max } = constraintsOf(def);
+			const part = (max: number) => transform.utils.random.int({ min: 0, max });
+			const full = `P${part(5)}Y${part(11)}M${part(27)}DT${part(23)}H${part(59)}M${part(59)}S`;
+			if (full.length >= (min ?? 0) && full.length <= (max ?? Infinity)) {
+				return full;
+			}
+
+			// A day count sized to fit: "P1D", "P12D", …
+			const target = max !== undefined && max < full.length ? max : min ?? 3;
+			const digits = Math.max(1, target - 2);
+			return `P${randomDigits(transform, digits)}D`;
+		}),
+});
+
+const BASE64 =
+	'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+const BASE64URL =
+	'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
+
+/** Random characters from `alphabet`, at a length `valid` accepts. */
+function encoded(
+	transform: Runner,
+	def: ZodStringDef,
+	kind: string,
+	alphabet: string,
+	valid: (length: number) => boolean,
+): string {
+	const constraints = constraintsOf(def);
+	const lo = constraints.min ?? 0;
+	const hi = constraints.max ?? Infinity;
+	const natural = Math.min(
+		Math.max(lo, transform.utils.random.int({ min: 4, max: 8 }) * 4),
+		hi,
+	);
+
+	// The nearest valid length to the natural one, within the bounds.
+	let length: number | undefined;
+	for (let delta = 0; delta <= 4 && length === undefined; delta++) {
+		for (const candidate of [natural - delta, natural + delta]) {
+			if (candidate >= lo && candidate <= hi && valid(candidate)) {
+				length = candidate;
+				break;
+			}
+		}
+	}
+	if (length === undefined) throw unsatisfiable(kind, constraints);
+
+	let result = '';
+	while (result.length < length)
+		result += transform.utils.random.from(alphabet);
+	return result;
+}
+
+export const Base64Generator = Generator({
+	schema: ZodString,
+	filter: ({ def, transform }) =>
+		transform.utils.checks(def.checks).has('base64'),
+	output: ({ schema, def, transform }) =>
+		generate(schema, def, () =>
+			// Unpadded base64 is valid only in whole groups of four.
+			encoded(transform, def, 'base64', BASE64, (length) => length % 4 === 0),
+		),
+});
+
+export const Base64UrlGenerator = Generator({
+	schema: ZodString,
+	filter: ({ def, transform }) =>
+		transform.utils.checks(def.checks).has('base64url'),
+	output: ({ schema, def, transform }) =>
+		generate(schema, def, () =>
+			// A trailing group can't be a single character.
+			encoded(
+				transform,
+				def,
+				'base64url',
+				BASE64URL,
+				(length) => length % 4 !== 1,
+			),
+		),
+});
+
+export const NanoidGenerator = Generator({
+	schema: ZodString,
+	filter: ({ def, transform }) =>
+		transform.utils.checks(def.checks).has('nanoid'),
+	output: ({ schema, def, transform }) =>
+		fixedFormat(schema, def, 'nanoid', () => {
+			let result = '';
+			while (result.length < 21)
+				result += transform.utils.random.from(BASE64URL);
+			return result;
+		}),
+});
+
+function base64url(value: string): string {
+	return btoa(value).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+export const JwtGenerator = Generator({
+	schema: ZodString,
+	filter: ({ def, transform }) => transform.utils.checks(def.checks).has('jwt'),
+	output: ({ schema, def, transform }) => {
+		const alg = transform.utils.checks(def.checks).find('jwt')?.alg ?? 'HS256';
+
+		const constraints = constraintsOf(def);
+
+		return fixedFormat(schema, def, 'jwt', () => {
+			const header = base64url(JSON.stringify({ alg, typ: 'JWT' }));
+			let payload = base64url(
+				JSON.stringify({
+					sub: transform.utils.random.uuid(),
+					// Seconds since the epoch, between 2000 and 2030.
+					iat: transform.utils.random.int({ min: 946684800, max: 1893456000 }),
+				}),
+			);
+
+			// The signature may be any length (even empty), and the payload can
+			// shrink to `{}`, so most length checks fit.
+			let signatureLength = 43;
+			const natural = header.length + payload.length + 2 + signatureLength;
+			const length = pickLength(transform, constraints, {
+				min: natural,
+				max: natural,
+			});
+			if (length !== undefined && length !== natural) {
+				if (length < natural - signatureLength) payload = base64url('{}');
+				signatureLength = Math.max(
+					0,
+					length - header.length - payload.length - 2,
+				);
+			}
+
+			let signature = '';
+			while (signature.length < signatureLength) {
+				signature += transform.utils.random.from(BASE64URL);
+			}
+			return `${header}.${payload}.${signature}`;
+		});
+	},
 });
 
 export const RegexGenerator = Generator({
