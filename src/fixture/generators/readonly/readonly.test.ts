@@ -48,8 +48,7 @@ const NameGenerator = Generator({
 });
 
 describe('regressions', () => {
-	// BUG: the inner type is generated without context, so path-based generators miss.
-	test.fails('passes path context to the inner type', () => {
+	test('passes path context to the inner type', () => {
 		const fixture = new Fixture().extend(NameGenerator);
 		expect(
 			fixture.fromSchema(z.object({ name: z.string().readonly() })),

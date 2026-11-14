@@ -87,13 +87,37 @@ const NameGenerator = Generator({
 });
 
 describe('regressions', () => {
-	// BUG: the inner type is generated without context, so path-based generators miss.
-	test.fails('passes path context to the inner type', () => {
+	test('passes path context to the inner type', () => {
 		const fixture = new Fixture().extend(NameGenerator);
 		const schema = z.object({ name: z.string().default('default') });
 		for (let seed = 0; seed < 20; seed++) {
 			expect(fixture.fromSchema(schema, { seed })).toMatchObject({
 				name: expect.stringMatching(/^(NAME|default)$/),
+			});
+		}
+	});
+
+	test('runs the default through the inner schema', () => {
+		const schema = z
+			.string()
+			.transform((value) => value.length)
+			.default('four');
+
+		for (let seed = 0; seed < 20; seed++) {
+			expect(new Fixture().fromSchema(schema, { seed })).toBeTypeOf('number');
+		}
+	});
+
+	test('passes the path when parsing the default', () => {
+		const schema = z.object({
+			name: z
+				.string()
+				.transform((_, ctx) => ctx.path.join('.'))
+				.default('four'),
+		});
+		for (let seed = 0; seed < 20; seed++) {
+			expect(new Fixture().fromSchema(schema, { seed })).toEqual({
+				name: 'name',
 			});
 		}
 	});
