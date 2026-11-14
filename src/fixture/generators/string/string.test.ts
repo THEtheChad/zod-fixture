@@ -263,12 +263,11 @@ describe('create strings', () => {
 describe('regressions', () => {
 	const fixture = new Fixture();
 
-	// BUG: RegExCache throws on every cache hit.
-	test.fails('supports a regex inside an array', () => {
+	test('supports a regex inside an array', () => {
 		expect(fixture).toReasonablySatisfy(z.array(z.string().regex(/^[a-z]+$/)));
 	});
 
-	test.fails('supports one regex shared by two fields', () => {
+	test('supports one regex shared by two fields', () => {
 		const pattern = /^[a-z]+$/;
 		expect(fixture).toReasonablySatisfy(
 			z.object({ a: z.string().regex(pattern), b: z.string().regex(pattern) }),
