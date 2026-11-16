@@ -192,4 +192,49 @@ describe('regressions', () => {
 		expect(fixture).toReasonablySatisfy(tree(), 100);
 		expect(new UnconstrainedFixture()).toReasonablySatisfy(tree(), 100);
 	});
+
+	test('limits a schema factory to the same depth as a shared lazy schema', () => {
+		type Node = { name: string; children: Node[] };
+		const tree = (): z.ZodType<Node> =>
+			z.object({ name: z.string(), children: z.array(z.lazy(() => tree())) });
+		const shared: z.ZodType<Node> = z.object({
+			name: z.string(),
+			children: z.array(z.lazy(() => shared)),
+		});
+
+		for (let seed = 0; seed < 20; seed++) {
+			expect(fixture.fromSchema(tree(), { seed })).toEqual(
+				fixture.fromSchema(shared, { seed }),
+			);
+		}
+	});
+
+	test('ends recursion through mutually recursive schema factories', () => {
+		const folder = (): z.ZodTypeAny =>
+			z.object({ files: z.array(z.lazy(() => file())) });
+		const file = (): z.ZodTypeAny =>
+			z.object({ name: z.string(), parent: z.lazy(() => folder()).optional() });
+		expect(fixture).toReasonablySatisfy(folder(), 100);
+	});
+
+	test('ends recursion through a schema factory in a union', () => {
+		const json = (): z.ZodTypeAny =>
+			z.union([z.string(), z.array(z.lazy(() => json()))]);
+		expect(fixture).toReasonablySatisfy(json(), 100);
+	});
+
+	test('supports recursion through bound getters', () => {
+		type Node = { children: Node[] };
+		function getShared(this: unknown): z.ZodType<Node> {
+			return shared;
+		}
+		const shared: z.ZodType<Node> = z.object({
+			children: z.array(z.lazy(getShared.bind(null))),
+		});
+		expect(fixture).toReasonablySatisfy(shared, 100);
+
+		const tree = (): z.ZodTypeAny =>
+			z.object({ children: z.array(z.lazy((() => tree()).bind(null))) });
+		expect(fixture).toReasonablySatisfy(tree(), 20);
+	});
 });

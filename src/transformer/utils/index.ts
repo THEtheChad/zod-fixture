@@ -15,21 +15,46 @@ import { Randomization } from './Randomization';
 const RECURSION_HARD_LIMIT = 32;
 
 /**
- * Recursion can also be built from a fresh `z.lazy` per level (a schema
- * factory), which per-schema depth can't see. Treat this many nested lazy
- * schemas beyond the maximum depth as the recursion limit too, and give up
- * past `MAX_ACTIVE_LAZIES` instead of overflowing the stack.
+ * A backstop for recursion that lazy keys can't see (getters built at
+ * runtime): treat this many nested lazy schemas beyond the maximum depth as
+ * the recursion limit too, and give up past `MAX_ACTIVE_LAZIES` instead of
+ * overflowing the stack.
  */
 const LAZY_NESTING_LIMIT = 4;
 const MAX_ACTIVE_LAZIES = 200;
 
+type LazyKey = string | (() => ZodTypeAny);
+const lazyKeys = new WeakMap<() => ZodTypeAny, LazyKey>();
+
+/**
+ * Identifies a lazy schema for depth tracking. A schema factory
+ * (`const tree = () => z.object({ children: z.array(z.lazy(() => tree())) })`)
+ * builds a fresh getter per level, so key by the getter's source code: every
+ * level of a factory shares it. Two different lazy schemas written with
+ * identical code share a key too, which only makes their fixtures shallower:
+ * the key sets when to stop recursing, never when to give up (that uses the
+ * getter itself). Bound and native functions all print as `[native code]`,
+ * so those are keyed by identity.
+ */
+function lazyKey(getter: () => ZodTypeAny): LazyKey {
+	let key = lazyKeys.get(getter);
+	if (key === undefined) {
+		const source = Function.prototype.toString.call(getter);
+		key = source.includes('[native code]') ? getter : source;
+		lazyKeys.set(getter, key);
+	}
+	return key;
+}
+
 export class Utils {
 	random: Randomization;
 
-	/** Current nesting depth per lazy schema (keyed by its getter). */
-	private lazyDepth = new Map<() => ZodTypeAny, number>();
+	/** Current nesting depth per lazy schema (see `lazyKey`). */
+	private lazyDepth = new Map<LazyKey, number>();
+	/** Current nesting depth per getter, to detect recursion without an end. */
+	private getterDepth = new Map<() => ZodTypeAny, number>();
 	/** Where each lazy schema was first entered, for error messages. */
-	private lazyPath = new Map<() => ZodTypeAny, Context['path']>();
+	private lazyPath = new Map<LazyKey, Context['path']>();
 	private rootLazyPath: Context['path'] = [];
 	private activeLazies = 0;
 	private maxDepth: number | undefined;
@@ -124,7 +149,7 @@ export class Utils {
 		const def = schema._def;
 		switch (def.typeName) {
 			case 'ZodLazy':
-				return (this.lazyDepth.get(def.getter) ?? 0) > 0;
+				return (this.lazyDepth.get(lazyKey(def.getter)) ?? 0) > 0;
 			case 'ZodObject':
 				return Object.values(def.shape() as Record<string, ZodTypeAny>).some(
 					(value) => this.mustRecurse(value),
@@ -167,17 +192,19 @@ export class Utils {
 
 	/** Run `action` one level deeper inside the lazy schema `getter`. */
 	enterLazy<T>(getter: () => ZodTypeAny, context: Context, action: () => T): T {
-		const depth = (this.lazyDepth.get(getter) ?? 0) + 1;
+		const key = lazyKey(getter);
+		const depth = (this.lazyDepth.get(key) ?? 0) + 1;
+		const getterDepth = (this.getterDepth.get(getter) ?? 0) + 1;
 		// Only the same schema nesting inside itself can recurse forever;
 		// distinct lazy schemas nested in each other are finite.
 		if (this.activeLazies === 0) this.rootLazyPath = context.path;
 		if (
-			depth > this.maxRecursionDepth + RECURSION_HARD_LIMIT ||
+			getterDepth > this.maxRecursionDepth + RECURSION_HARD_LIMIT ||
 			this.activeLazies >= MAX_ACTIVE_LAZIES
 		) {
 			const path =
-				depth > 1
-					? this.lazyPath.get(getter) ?? context.path
+				getterDepth > 1
+					? this.lazyPath.get(key) ?? context.path
 					: this.rootLazyPath;
 			throw new Error(
 				`Unable to generate a fixture: the recursive schema at ${
@@ -187,13 +214,15 @@ export class Utils {
 			);
 		}
 
-		if (depth === 1) this.lazyPath.set(getter, context.path);
-		this.lazyDepth.set(getter, depth);
+		if (depth === 1) this.lazyPath.set(key, context.path);
+		this.lazyDepth.set(key, depth);
+		this.getterDepth.set(getter, getterDepth);
 		this.activeLazies++;
 		try {
 			return action();
 		} finally {
-			this.lazyDepth.set(getter, depth - 1);
+			this.lazyDepth.set(key, depth - 1);
+			this.getterDepth.set(getter, getterDepth - 1);
 			this.activeLazies--;
 		}
 	}
