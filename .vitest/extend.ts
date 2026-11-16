@@ -1,6 +1,7 @@
 import { expect } from 'vitest';
 import type { ZodTypeAny } from 'zod';
 import type { Transformer } from '../src/transformer/transformer';
+import { findUncheckable } from './uncheckable';
 import { ITERATIONS, SEED } from './utils';
 
 const stringify = (value: unknown) =>
@@ -19,6 +20,19 @@ expect.extend({
 		schema: ZodTypeAny,
 		iterations = ITERATIONS,
 	) {
+		// With .not, one bad seed out of thousands would pass the assertion.
+		if (this.isNot) {
+			throw new Error('toReasonablySatisfy does not support .not');
+		}
+
+		const reason = findUncheckable(schema);
+		if (reason) {
+			throw new Error(
+				`toReasonablySatisfy can't check this schema: ${reason}. ` +
+					'Check the generated values directly instead.',
+			);
+		}
+
 		for (let i = 0; i < iterations; i++) {
 			// Every `fromSchema` call builds a fresh, seeded generator, so the seed
 			// must change per iteration or every iteration yields the same value.

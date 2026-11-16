@@ -5,8 +5,15 @@ import { z } from 'zod';
 describe('create catch', () => {
 	const fixture = new Fixture();
 
-	test('produces a valid catch', () => {
-		expect(fixture).toReasonablySatisfy(z.string().catch('fallback'));
+	test('produces values that satisfy the inner type', () => {
+		// Every value parses against a .catch() schema, so check the inner type.
+		const inner = z.string().email();
+		const schema = inner.catch('fallback');
+
+		for (let seed = 0; seed < 100; seed++) {
+			const value = fixture.fromSchema(schema, { seed });
+			expect(inner.safeParse(value).success, `seed ${seed}`).toBe(true);
+		}
 	});
 
 	test('generates the inner type rather than the catch value', () => {

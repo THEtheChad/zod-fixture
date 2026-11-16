@@ -24,5 +24,7 @@
 			"@/*": ["*"],
 			"zod-fixture": ["./public"]
 		}
-	}
+	},
+	// The default include skips dot-directories; check the test matchers too.
+	"include": ["**/*", ".vitest/**/*"]
 }
