@@ -1,3 +1,4 @@
+import { Fixture } from '@/fixture';
 import { ConstrainedTransformer } from '@/transformer/transformer';
 import { describe, expect, test, vi } from 'vitest';
 import { z } from 'zod';
@@ -43,5 +44,62 @@ describe('usage with effects', () => {
 		const result = transform.fromSchema(z.string().superRefine(spy));
 		expect(spy).not.toBeCalled();
 		expect(result).toBeTypeOf('string');
+	});
+});
+
+describe('regressions', () => {
+	const fixture = new Fixture();
+
+	test('regenerates inputs a transform rejects with addIssue', () => {
+		const schema = z
+			.number()
+			.int()
+			.transform((value, ctx) => {
+				if (value % 2) {
+					ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'odd' });
+					return z.NEVER;
+				}
+				return value / 2;
+			});
+
+		for (let seed = 0; seed < 100; seed++) {
+			expect(Number.isInteger(fixture.fromSchema(schema, { seed }))).toBe(true);
+		}
+	});
+
+	test('passes the path to the transform context', () => {
+		const paths: (string | number)[][] = [];
+		fixture.fromSchema(
+			z.object({
+				name: z.string().transform((value, ctx) => {
+					paths.push(ctx.path);
+					return value;
+				}),
+			}),
+		);
+		expect(paths).toEqual([['name']]);
+	});
+
+	test('explains a transform that rejects every input', () => {
+		const schema = z.object({
+			name: z.string().transform((_, ctx) => {
+				ctx.addIssue({ code: z.ZodIssueCode.custom });
+				return z.NEVER;
+			}),
+		});
+
+		expect(() => fixture.fromSchema(schema)).toThrowError(
+			'Unable to generate a value at name: the transform rejected all 20 generated inputs.',
+		);
+	});
+
+	test('warns once per refinement', () => {
+		const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+		const schema = z.string().refine(() => true);
+
+		for (let seed = 0; seed < 10; seed++) fixture.fromSchema(schema, { seed });
+
+		expect(warn).toHaveBeenCalledTimes(1);
+		warn.mockRestore();
 	});
 });

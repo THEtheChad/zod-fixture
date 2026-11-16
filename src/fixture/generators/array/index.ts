@@ -4,8 +4,9 @@ import { Generator } from '@/transformer/generator';
 export const ArrayGenerator = Generator({
 	schema: ZodArray,
 	output: ({ def, transform, context }) => {
-		const userDefinedMin = def.minLength?.value ?? def.exactLength?.value;
-		const userDefinedMax = def.maxLength?.value ?? def.exactLength?.value;
+		// An exact length overrides min and max.
+		const userDefinedMin = def.exactLength?.value ?? def.minLength?.value;
+		const userDefinedMax = def.exactLength?.value ?? def.maxLength?.value;
 
 		const min = transform.utils.resolveValue({
 			initial: userDefinedMin,
@@ -24,18 +25,17 @@ export const ArrayGenerator = Generator({
 		const result: unknown[] = [];
 
 		transform.utils.ifNotNever(def.type, (schema) => {
-			transform.utils.recursionCheck(schema, () => {
-				transform.utils.n(
-					(key) =>
-						result.push(
-							transform.fromSchema(schema, {
-								...context,
-								path: [...context.path, key],
-							})
-						),
-					{ min, max }
-				);
-			});
+			transform.utils.n(
+				(key) =>
+					result.push(
+						transform.fromSchema(schema, {
+							...context,
+							path: [...context.path, key],
+						}),
+					),
+				// At the recursion limit, use the smallest length the schema allows.
+				transform.utils.atRecursionLimit ? userDefinedMin ?? 0 : { min, max },
+			);
 		});
 
 		return result;

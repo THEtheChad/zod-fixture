@@ -1,6 +1,12 @@
 import { ZodEffects } from '@/internal/zod';
 import { Generator } from '@/transformer/generator';
 
+/** How many inputs to try when a transform rejects them with `addIssue`. */
+const MAX_TRANSFORM_ATTEMPTS = 20;
+
+/** Refinement schemas that have already logged their warning. */
+const warnedRefinements = new WeakSet<object>();
+
 export const TransformGenerator = Generator({
 	schema: ZodEffects,
 	filter: ({ def }) => def.effect.type === 'transform',
@@ -8,12 +14,25 @@ export const TransformGenerator = Generator({
 		if (def.effect.type !== 'transform')
 			throw new Error('Must be a transform effect.');
 
-		const initialValue = transform.fromSchema(def.schema, context);
-		return def.effect.transform(initialValue, {
-			addIssue: transform.utils.noop,
-			// @TODO: Verify that path is not needed here.
-			path: [],
-		});
+		const { effect } = def;
+		for (let attempt = 0; attempt < MAX_TRANSFORM_ATTEMPTS; attempt++) {
+			const input = transform.fromSchema(def.schema, context);
+			let rejected = false;
+			const output = effect.transform(input, {
+				// A transform reports invalid input with `addIssue`; Zod then fails
+				// the parse, so generate another input instead.
+				addIssue: () => {
+					rejected = true;
+				},
+				path: context.path,
+			});
+			if (!rejected) return output;
+		}
+
+		const path = context.path.length ? ` at ${context.path.join('.')}` : '';
+		throw new Error(
+			`Unable to generate a value${path}: the transform rejected all ${MAX_TRANSFORM_ATTEMPTS} generated inputs.`,
+		);
 	},
 });
 
@@ -40,9 +59,12 @@ export const RefinementGenerator = Generator({
 
 		const { schema } = def;
 
-		console.warn(
-			`Because refinements use custom validations, we have no way to accurately manufacture acceptable values. Using the parent type (${schema._def.typeName}) to approximate the result.`
-		);
+		if (!warnedRefinements.has(def)) {
+			warnedRefinements.add(def);
+			console.warn(
+				`Because refinements use custom validations, we have no way to accurately manufacture acceptable values. Using the parent type (${schema._def.typeName}) to approximate the result.`,
+			);
+		}
 		return transform.fromSchema(schema, context);
 	},
 });

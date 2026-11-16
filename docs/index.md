@@ -39,6 +39,8 @@ bun add -d zod-fixture
 
 :::
 
+zod-fixture supports Zod 3 (3.22 or later). Zod 4 isn't supported yet.
+
 ## Getting Started
 
 The easiest way to start using `zod-fixture` is to import the pre-configured `createFixture` function.

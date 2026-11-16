@@ -1,0 +1,74 @@
+name: nightly
+
+# PR runs check the same 1000 seeds every time, so they stay reproducible.
+# This run explores fresh ones: a random base seed and more iterations.
+on:
+  schedule:
+    - cron: '17 4 * * *'
+  workflow_dispatch:
+    inputs:
+      seed:
+        description: 'Base seed (blank for random)'
+        required: false
+        default: ''
+      iterations:
+        description: 'Seeds per toReasonablySatisfy check'
+        required: false
+        default: '10000'
+
+permissions:
+  contents: read
+
+jobs:
+  seeds:
+    timeout-minutes: 20
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📖 Check out repo
+        uses: actions/checkout@v4
+      - name: ⚙️ Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - name: 🔎 Install dependencies
+        run: npm ci
+      - name: 🎲 Pick a seed
+        id: seed
+        env:
+          INPUT_SEED: ${{ inputs.seed }}
+          INPUT_ITERATIONS: ${{ inputs.iterations }}
+        run: |
+          # Seeds wrap at 2^32; stay well below it.
+          seed="${INPUT_SEED:-$(( (RANDOM << 15) | RANDOM ))}"
+          iterations="${INPUT_ITERATIONS:-10000}"
+          for value in "$seed" "$iterations"; do
+            [[ "$value" =~ ^[0-9]+$ ]] || { echo "::error::Not a number: $value"; exit 1; }
+          done
+          echo "seed=$seed" >> "$GITHUB_OUTPUT"
+          echo "iterations=$iterations" >> "$GITHUB_OUTPUT"
+          echo "Seeds $seed..$(( seed + iterations - 1 ))"
+          echo "Seeds \`$seed\`..\`$(( seed + iterations - 1 ))\`" >> "$GITHUB_STEP_SUMMARY"
+      - name: 🧪 Test
+        env:
+          SATISFY_SEED: ${{ steps.seed.outputs.seed }}
+          SATISFY_ITERATIONS: ${{ steps.seed.outputs.iterations }}
+        # A check runs every seed in one test, so allow far more than 5s.
+        run: npm test -- --testTimeout=300000
+      - name: 📝 Explain how to replay
+        if: failure() && steps.seed.outputs.seed != ''
+        env:
+          SEED: ${{ steps.seed.outputs.seed }}
+          ITERATIONS: ${{ steps.seed.outputs.iterations }}
+        run: |
+          {
+            echo '### Replay'
+            echo 'The failure message names the failing seed. To rerun just that seed:'
+            echo '```sh'
+            echo 'SATISFY_SEED=<failing seed> SATISFY_ITERATIONS=1 npm test -- -t "<test name>"'
+            echo '```'
+            echo 'Or rerun this whole range (also available from "Run workflow"):'
+            echo '```sh'
+            echo "SATISFY_SEED=$SEED SATISFY_ITERATIONS=$ITERATIONS npm test -- --testTimeout=300000"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

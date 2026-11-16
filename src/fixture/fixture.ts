@@ -1,14 +1,15 @@
 import type { InferZodType, ZodTypeAny } from '@/internal/zod';
-import type { Defaults } from '../transformer/defaults';
+import type { PartialDefaults } from '../transformer/defaults';
 import {
 	ConstrainedTransformer,
 	UnconstrainedTransformer,
+	schemaName,
 } from '../transformer/transformer';
 import { DEFAULT_FIXTURE_GENERATORS } from './generators';
 
 function missingGeneratorError(schema: ZodTypeAny) {
 	const message = [
-		`No generator found for ${schema.constructor.name}.`,
+		`No generator found for ${schemaName(schema)}.`,
 		'',
 		'For z.custom, refer to the documentation https://github.com/timdeschryver/zod-fixture.',
 		'If you still believe this is an error, please open an issue at https://github.com/timdeschryver/zod-fixture/issues/new.',
@@ -22,7 +23,7 @@ export interface ConstrainedFixture extends ConstrainedTransformer {
 	// explicitly define the return type
 	fromSchema<TSchema extends ZodTypeAny>(
 		schema: TSchema,
-		instanceDefaults?: Partial<Defaults>,
+		instanceDefaults?: PartialDefaults,
 	): InferZodType<TSchema>;
 }
 
@@ -35,7 +36,7 @@ export interface UnconstrainedFixture extends UnconstrainedTransformer {
 	// explicitly define the return type
 	fromSchema<TSchema extends ZodTypeAny>(
 		schema: TSchema,
-		instanceDefaults?: Partial<Defaults>,
+		instanceDefaults?: PartialDefaults,
 	): InferZodType<TSchema>;
 }
 
@@ -48,7 +49,7 @@ export { ConstrainedFixture as Fixture };
 
 export function createFixture<TSchema extends ZodTypeAny>(
 	schema: TSchema,
-	instanceDefaults?: Partial<Defaults>,
+	instanceDefaults?: PartialDefaults,
 ): InferZodType<TSchema> {
 	return new ConstrainedFixture(instanceDefaults).fromSchema(schema);
 }

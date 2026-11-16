@@ -16,28 +16,37 @@ jobs:
   test:
     timeout-minutes: 5
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [22, 24]
     steps:
       - name: 📖 Check out repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: ⚙️ Set up Node
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: npm
       - name: 🔎 Install dependencies
         run: npm ci
       - name: 👀 Lint
         run: npm run lint
+      - name: 🔍 Typecheck
+        run: npm run typecheck
       - name: 🧪 Test
         run: npm run test:coverage
-        env:
-          SATISFY_ITERATIONS: 1000
 
   docs:
     timeout-minutes: 5
     runs-on: ubuntu-latest
     steps:
       - name: 📖 Check out repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: ⚙️ Set up Node
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
       - name: 🔎 Install dependencies
         run: npm ci
       - name: Generate README
@@ -54,17 +63,20 @@ jobs:
     if: ${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/beta' }}
     steps:
       - name: 📖 Check out repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: ⚙️ Set up Node
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
       - name: 🔎 Install dependencies
         run: npm ci
       - name: 🏗️ Build
         run: npm run build
       - name: 🚀 Release
-        uses: cycjimmy/semantic-release-action@v3
+        uses: cycjimmy/semantic-release-action@v8
         with:
-          semantic_version: 16
+          semantic_version: 25
           branches: |
             [
               'main',
