@@ -69,7 +69,7 @@
 		"zod": "^3.22.0"
 	},
 	"dependencies": {
-		"randexp": "^0.5.3"
+		"randexp": "^0.6.1"
 	},
 	"devDependencies": {
 		"@eslint/js": "^10.0.1",
