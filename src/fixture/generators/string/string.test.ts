@@ -427,6 +427,31 @@ describe('regressions', () => {
 		['url with a scheme prefix', z.string().url().startsWith('ftp')],
 		['long regex matches', z.string().regex(/^a+$/).min(150)],
 		[
+			'a long regex match of exact length',
+			z.string().regex(/^\d+$/).length(150),
+		],
+		[
+			'a slug regex of exact length',
+			z
+				.string()
+				.regex(/^[a-z]+(-[a-z]+)*$/)
+				.length(20),
+		],
+		[
+			'a regex of fixed-length groups',
+			z
+				.string()
+				.regex(/^(abc|de)+$/)
+				.length(11),
+		],
+		[
+			'a regex with a back-reference and a length',
+			z
+				.string()
+				.regex(/^(a+)-\1$/)
+				.max(9),
+		],
+		[
 			'email whose prefix is the local part',
 			z.string().email().startsWith('a').length(6),
 		],

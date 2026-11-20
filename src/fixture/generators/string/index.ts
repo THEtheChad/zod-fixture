@@ -884,9 +884,12 @@ export const RegexGenerator = Generator({
 			throw new Error(`RegexGenerator: regex pattern not found`);
 		}
 
-		// RandExp picks repetition counts at random; cap them at the max length
-		// and retry until the length checks and any further patterns match.
+		// With length checks, plan a match of an allowed length. Otherwise, or
+		// when a pattern can't be planned, RandExp picks repetition counts at
+		// random: cap them at the max length and retry until the length checks
+		// and any further patterns match.
 		const { min, max } = constraintsOf(def);
+		const lengthChecked = min !== undefined || max !== undefined;
 		const cap = max ?? Math.max(100, 2 * (min ?? 0));
 		const repetition = (pattern: RegExp, attempt: number) => {
 			// Several unbounded quantifiers (`+`, `*`, `{n,}`) multiply lengths:
@@ -907,9 +910,12 @@ export const RegexGenerator = Generator({
 			// With several patterns, generate from each in turn.
 			(attempt) => {
 				const pattern = patterns[attempt % patterns.length] as RegExp;
-				return transform.utils.random.regexp(
-					pattern,
-					repetition(pattern, attempt),
+				const planned = lengthChecked
+					? transform.utils.random.regexpOfLength(pattern, min ?? 0, cap)
+					: undefined;
+				return (
+					planned ??
+					transform.utils.random.regexp(pattern, repetition(pattern, attempt))
 				);
 			},
 			200,
