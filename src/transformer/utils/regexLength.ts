@@ -243,6 +243,11 @@ export class LengthPlanner {
 	) {
 		this.parsed = new RandExp(pattern);
 		this.root = (this.parsed as unknown as { tokens: Token }).tokens;
+		// The plan reads RandExp's internal parse; anything unexpected there
+		// leaves the pattern to sampling rather than failing.
+		if (this.root?.type !== TokenType.ROOT) {
+			throw new UnplannablePattern('Unexpected RandExp tokens.');
+		}
 		this.lengths(this.root);
 	}
 
@@ -284,10 +289,12 @@ export class LengthPlanner {
 					repeats.maxUseful(min, token.max ?? Infinity),
 				);
 			}
-			default:
+			case TokenType.REFERENCE:
 				throw new UnplannablePattern(
 					'Back-references depend on what a group generated earlier.',
 				);
+			default:
+				throw new UnplannablePattern(`Unexpected token type ${token.type}.`);
 		}
 	}
 
@@ -334,7 +341,8 @@ export class LengthPlanner {
 			if (index < size) return from + index;
 			index -= size;
 		}
-		throw new Error('Unable to pick a length from an empty set.');
+		// Planning guarantees a choice; if it ever doesn't, sample instead.
+		throw new UnplannablePattern('No length to pick.');
 	}
 
 	/**

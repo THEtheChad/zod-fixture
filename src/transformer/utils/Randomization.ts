@@ -1,7 +1,7 @@
 import type { Defaults } from '../defaults';
 import MersenneTwister from './MersenneTwister';
 import { RegExCache } from './RegExCache';
-import { plannerFor } from './regexLength';
+import { UnplannablePattern, plannerFor } from './regexLength';
 
 const LOREM =
 	'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.';
@@ -203,11 +203,16 @@ export class Randomization {
 		min: number,
 		max: number,
 	): string | undefined {
-		return plannerFor(pattern, max)?.generateBetween(
-			min,
-			max,
-			this.randExpFor(pattern),
-		);
+		try {
+			return plannerFor(pattern, max)?.generateBetween(
+				min,
+				max,
+				this.randExpFor(pattern),
+			);
+		} catch (error) {
+			if (error instanceof UnplannablePattern) return undefined;
+			throw error;
+		}
 	}
 
 	private randExpFor(pattern: string | RegExp) {
