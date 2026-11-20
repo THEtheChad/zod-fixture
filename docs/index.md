@@ -39,7 +39,7 @@ bun add -d zod-fixture
 
 :::
 
-zod-fixture supports Zod 3 (3.22 or later). Zod 4 isn't supported yet.
+zod-fixture supports Zod 3 (3.22 or later). Zod 4 isn't supported yet. On Zod 3.25, import your schemas from `zod` or `zod/v3`: schemas from `zod/v4` fail type-checking and throw an error at runtime.
 
 ## Getting Started
 
@@ -62,7 +62,7 @@ Take a look at the [examples](https://github.com/timdeschryver/zod-fixture/tree/
 
 ### Extending
 
-The easiset way to start customizing `zod-fixture` is to use the `Fixture` class directly and extend it with your own [generator](#generators).
+The easiest way to start customizing `zod-fixture` is to use the `Fixture` class directly and extend it with your own [generator](#generators).
 
 ::: info
 `createFixture(...)` is just syntactic sugar for `new Fixture().fromSchema(...)`
@@ -76,7 +76,7 @@ The example below uses 2 custom generators and a typical pattern for filtering b
 :::
 
 ::: tip
-The order the registered generators matters. The first generator that matches the conditions (`schema` and `filter`) is used to create the value.
+The order of the registered generators matters. The first generator that matches the conditions (`schema` and `filter`) is used to create the value.
 :::
 
 ### Generators
@@ -132,7 +132,7 @@ Matching keys of an object is another common pattern and a bit tricky if you don
 
 Output is a function that generates the fixture for any matches. `zod-fixture` provides a randomization utility for creating data, in addition to all of the defaults (including the seed).
 
-For example, in the example below we create our own `totalVisitsGenerator` to return more realastic numbers using the `random` utilities.
+For example, in the example below we create our own `totalVisitsGenerator` to return more realistic numbers using the `random` utilities.
 
 <<< @/../examples/fixture-extension.test.ts#generator
 
@@ -160,19 +160,51 @@ For example, in the example below we create our own `totalVisitsGenerator` to re
 
 The short answer, not yet. We plan to build out pre-defined generators for popular mocking libraries but are currently prioritizing reliability and ease of use. If you'd like to help us build out this functionality, feel free to open a pull request 😀
 
+### What are the known limitations?
+
+Most schemas produce a fixture that passes the schema. These are the exceptions:
+
+- **Regexes with an exact or narrow length**: a regex combined with `.length()`, or with a tight `.min()`/`.max()` range, can fail with `Unable to generate a valid string` for some seeds. This gets more likely as the length grows. Write a custom [generator](#generators) for these fields.
+- **Refinements**: `.refine()` and `.superRefine()` run custom code that `zod-fixture` can't see, so the fixture is generated from the parent schema and might not pass the refinement. A warning is logged once per schema.
+- **Transforms that reject their input**: if a transform calls `ctx.addIssue` for every generated input, `zod-fixture` gives up after 20 attempts and throws.
+- **Pipelines**: when no generated value of the input schema passes the output schema, the fixture is generated from the output schema alone, and a warning is logged once per schema.
+- **Recursive schemas that never end**: a `z.lazy` schema that can't stop recursing throws. Make the recursive part optional or nullable, or allow an empty array.
+- **Schemas with no valid value**: for example `z.number().int().multipleOf(7).min(1).max(6)` or `z.never()`. These throw an error.
+
 ## API
 
 ### Fixture
 
 ::: info
-`Fixture` is a `Transformer` that comes prepackaged with generators for each of the first party types that Zod provides. For most cases, this is all you wil need, and offers a fast and easy way to create fixtures. For building a custom `Transformer` refer to the [Advanced](#advanced-topics) documentation.
+`Fixture` is a `Transformer` that comes prepackaged with generators for each of the first party types that Zod provides. For most cases, this is all you will need, and offers a fast and easy way to create fixtures. For building a custom `Transformer` refer to the [Advanced](#advanced-topics) documentation.
 :::
+
+#### Supported schemas
+
+`Fixture` has generators for these Zod types:
+
+- **Primitives**: `string`, `number`, `bigint`, `boolean`, `date`, `symbol`, `null`, `undefined`, `void`, `any`, `unknown`, `nan`, `literal`, `enum` and `nativeEnum`
+- **String formats**: `email`, `url`, `uuid`, `cuid`, `cuid2`, `ulid`, `nanoid`, `emoji`, `ip`, `cidr`, `datetime`, `date`, `time`, `duration`, `base64`, `base64url`, `jwt` and `regex`
+- **Collections**: `object`, `record`, `array`, `tuple`, `set` and `map`
+- **Composition**: `union`, `discriminatedUnion`, `intersection`, `optional`, `nullable`, `default`, `catch`, `readonly`, `brand`, `lazy`, `promise`, `function` and `pipe`
+- **Effects**: `transform`, `preprocess`, `refine` and `superRefine` (see the [known limitations](#what-are-the-known-limitations))
+
+`z.custom` and `z.instanceof` need a custom generator, see the [FAQ](#i-have-a-custom-type-that-i-need-to-support-how-do-i-do-that).
 
 #### Config
 
 We provide sane defaults for the random utilities used by our generators, but these can easily be customized.
 
 <<< @/../src/transformer/defaults.ts#defaults
+
+Each group can be overridden in part. Any value you leave out keeps its default.
+
+::: code-group
+<<< @/../examples/partial-defaults.test.ts#example [Example]
+<<< @/../examples/partial-defaults.test.ts#output [Output]
+:::
+
+The same options can be passed to `createFixture(schema, options)`, to `new Fixture(options)`, or to a single `fixture.fromSchema(schema, options)` call. Options passed to `fromSchema` take precedence over the ones passed to the constructor.
 
 ##### Seed (optional)
 
@@ -181,6 +213,16 @@ A seed can be provided to produce the same results every time.
 ```ts
 const fixture = new Fixture({ seed: number });
 ```
+
+### Types
+
+The package exports these types for writing your own generators and transformers:
+
+- `Definition` -- a generator definition, as returned by `Generator(...)`
+- `Filter` -- the type of a generator's `filter` function
+- `Context` -- the `context` passed to `filter` and `output`, including the `path` to the current value
+- `Runner` -- the type of `transform` passed to `filter` and `output`
+- `Defaults` and `PartialDefaults` -- the [config](#config) options
 
 ## Advanced Topics
 
@@ -308,4 +350,4 @@ A codespace will open in a web-based version of Visual Studio Code. The [dev con
 
 ## Credits
 
-This package is inspired on [AutoFixture](https://github.com/AutoFixture/AutoFixture).
+This package is inspired by [AutoFixture](https://github.com/AutoFixture/AutoFixture).
