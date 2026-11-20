@@ -2,14 +2,23 @@ import RandExp from 'randexp';
 import { types } from 'ret';
 import { describe, expect, test } from 'vitest';
 import MersenneTwister from './MersenneTwister';
-import { LengthPlanner, TokenType, UnplannablePattern } from './regexLength';
+import {
+	LengthPlanner,
+	PLANNING_BUDGET,
+	TokenType,
+	UnplannablePattern,
+} from './regexLength';
 
 function planner(pattern: RegExp, limit: number, seed = 1) {
-	const randexp = new RandExp(pattern);
+	const plan = new LengthPlanner(pattern, limit);
+	const random = new RandExp(pattern);
 	const mt = new MersenneTwister(seed);
-	randexp.randInt = (min, max) =>
+	random.randInt = (min, max) =>
 		min + Math.floor(mt.random() * (max - min + 1));
-	return new LengthPlanner(randexp, limit);
+	return {
+		generateBetween: (min: number, max: number) =>
+			plan.generateBetween(min, max, random),
+	};
 }
 
 /** Matches of `pattern` for several seeds, each between `min` and `max`. */
@@ -57,6 +66,30 @@ describe('regexLength', () => {
 		const a = planner(/^[a-z]+(-[a-z]+)*$/, 20, 7).generateBetween(20, 20);
 		const b = planner(/^[a-z]+(-[a-z]+)*$/, 20, 7).generateBetween(20, 20);
 		expect(a).toBe(b);
+	});
+
+	test('plans repeats that can be empty', () => {
+		// 19 needs 19 repeats of `a`, though `b{10}` is the longest repeat.
+		for (const value of generateMany(/^(a|b{10}|)*$/, 19, 19)) {
+			expect(value).toHaveLength(19);
+			expect(value).toMatch(/^(a|b{10}|)*$/);
+		}
+		// The required minimum is made up of empty repeats.
+		expect(planner(/^(a?){5}$/, 2).generateBetween(2, 2)).toBe('aa');
+	});
+
+	test('treats a set that matches nothing as producing nothing', () => {
+		expect(planner(/^a[^\s\S]?b$/, 3).generateBetween(2, 2)).toBe('ab');
+		expect(planner(/^a[^\s\S]b$/, 3).generateBetween(0, 3)).toBeUndefined();
+	});
+
+	test('gives up on patterns that need more than the planning budget', () => {
+		expect(PLANNING_BUDGET).toBeGreaterThan(0);
+		const start = Date.now();
+		expect(() =>
+			planner(/^(aa|bbbb)*$/, 100_000).generateBetween(0, 100_000),
+		).toThrow(UnplannablePattern);
+		expect(Date.now() - start).toBeLessThan(2000);
 	});
 
 	test('returns undefined when no match has an allowed length', () => {

@@ -1,7 +1,7 @@
 import type { Defaults } from '../defaults';
 import MersenneTwister from './MersenneTwister';
 import { RegExCache } from './RegExCache';
-import { LengthPlanner, UnplannablePattern } from './regexLength';
+import { plannerFor } from './regexLength';
 
 const LOREM =
 	'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.';
@@ -12,8 +12,6 @@ const WORDS = LOREM.toLowerCase().replace(/[,.]/g, '').split(' ');
 export class Randomization {
 	mt: MersenneTwister;
 	private regExCache = new RegExCache();
-	/** Length planners by RandExp instance, then by length limit. */
-	private planners = new WeakMap<object, Map<number, LengthPlanner>>();
 	regExRandInt: (min: number, max: number) => number;
 
 	constructor(private defaults: Defaults) {
@@ -198,30 +196,18 @@ export class Randomization {
 	/**
 	 * A string generated from `pattern` with a length in `[min, max]`, or
 	 * `undefined` when the pattern produces no such length or can't be
-	 * planned (back-references); fall back to `regexp` then.
+	 * planned (back-references, or too complex); fall back to `regexp` then.
 	 */
 	regexpOfLength(
-		pattern: string | RegExp,
+		pattern: RegExp,
 		min: number,
 		max: number,
 	): string | undefined {
-		const randexp = this.randExpFor(pattern);
-		let byLimit = this.planners.get(randexp);
-		if (!byLimit) {
-			byLimit = new Map();
-			this.planners.set(randexp, byLimit);
-		}
-		let planner = byLimit.get(max);
-		if (!planner) {
-			planner = new LengthPlanner(randexp, max);
-			byLimit.set(max, planner);
-		}
-		try {
-			return planner.generateBetween(min, max);
-		} catch (error) {
-			if (error instanceof UnplannablePattern) return undefined;
-			throw error;
-		}
+		return plannerFor(pattern, max)?.generateBetween(
+			min,
+			max,
+			this.randExpFor(pattern),
+		);
 	}
 
 	private randExpFor(pattern: string | RegExp) {

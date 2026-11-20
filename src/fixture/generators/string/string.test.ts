@@ -445,6 +445,20 @@ describe('regressions', () => {
 				.length(11),
 		],
 		[
+			'a regex with repeats that can be empty',
+			z
+				.string()
+				.regex(/^(a|b{10}|)*$/)
+				.length(19),
+		],
+		[
+			'a regex too sparse to plan, with a high max',
+			z
+				.string()
+				.regex(/^(aa|bbbb)*$/)
+				.max(3000),
+		],
+		[
 			'a regex with a back-reference and a length',
 			z
 				.string()
