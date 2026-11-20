@@ -149,6 +149,34 @@ describe('regressions', () => {
 		);
 	});
 
+	test.each([
+		['a step below 1e-6', z.number().multipleOf(1e-7)],
+		['a fractional step below 1e-6', z.number().multipleOf(2.5e-8)],
+		[
+			'a step below 1e-6 in a narrow range',
+			z.number().multipleOf(1e-7).min(0).max(2e-6),
+		],
+	])('creates a number Zod accepts for %s', (_, schema) => {
+		// Zod 3 rejects some exact multiples of these steps, like 0.5 and 3.
+		expect(z.number().multipleOf(1e-7).safeParse(0.5).success).toBe(false);
+		expect(fixture).toReasonablySatisfy(schema);
+	});
+
+	test.each([
+		[
+			'integers',
+			z.number().int().multipleOf(1e-7),
+			"Zod's multipleOf(1e-7) check rejects every integer in [-100, 100].",
+		],
+		[
+			'values below 1e-6',
+			z.number().multipleOf(1e-7).min(0).lt(1e-6),
+			"Zod's multipleOf(1e-7) check rejects every multiple in [0, 0.000001).",
+		],
+	])('throws when Zod rejects every multiple: %s', (_, schema, message) => {
+		expect(() => fixture.fromSchema(schema)).toThrowError(message);
+	});
+
 	test('respects a fractional multipleOf with exclusive bounds', () => {
 		expect(fixture).toReasonablySatisfy(
 			z.number().multipleOf(0.1).gt(0.3).lt(0.6),

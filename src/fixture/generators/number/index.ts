@@ -13,7 +13,7 @@ import {
 
 export const NumberGenerator = Generator({
 	schema: ZodNumber,
-	output: ({ def, transform }) => {
+	output: ({ schema, def, transform }) => {
 		const checks = transform.utils.checks(def.checks);
 		const isInt = checks.has('int');
 		const isFinite = checks.has('finite');
@@ -103,7 +103,24 @@ export const NumberGenerator = Generator({
 				);
 			}
 
-			result = at(transform.utils.random.int({ min: kMin, max: kMax }));
+			const pick = () =>
+				at(transform.utils.random.int({ min: kMin, max: kMax }));
+			result = pick();
+			if (!schema.safeParse(result).success) {
+				result = acceptedMultiple(
+					(value) => schema.safeParse(value).success,
+					pick,
+					at,
+					kMin,
+					kMax,
+					() =>
+						`Unable to generate a number: Zod's ${steps
+							.map((value) => `multipleOf(${value})`)
+							.join(' and ')} check rejects every ${
+							isInt ? 'integer' : 'multiple'
+						} in ${describe()}. Zod 3 counts decimal places from a number's string form, so a step below 1e-6 (like 1e-7) only matches values of at least 1e-6 whose last decimal isn't 0.`,
+				);
+			}
 		} else {
 			if (min > max) {
 				throw new Error(
@@ -129,3 +146,33 @@ export const NumberGenerator = Generator({
 		return result;
 	},
 });
+
+/** Random multiples to try after Zod rejects the first one. */
+const RETRIES = 20;
+/** Multiples to check one by one, from the lowest, after that. */
+const SCAN = 1000;
+
+/**
+ * A multiple that Zod's `multipleOf` check accepts. Zod 3 counts decimal
+ * places from a number's string form, and steps below 1e-6 print in
+ * exponent form (`"1e-7"`), so it rejects some exact multiples:
+ * `multipleOf(1e-7)` rejects `0.5`, `3` and `3e-7`.
+ */
+function acceptedMultiple(
+	accepts: (value: number) => boolean,
+	pick: () => number,
+	at: (k: number) => number,
+	kMin: number,
+	kMax: number,
+	error: () => string,
+): number {
+	for (let i = 0; i < RETRIES; i++) {
+		const value = pick();
+		if (accepts(value)) return value;
+	}
+	for (let k = kMin; k <= Math.min(kMax, kMin + SCAN); k++) {
+		const value = at(k);
+		if (accepts(value)) return value;
+	}
+	throw new Error(error());
+}
