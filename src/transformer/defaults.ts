@@ -129,4 +129,36 @@ export const unconstrained = {
 	},
 } satisfies Defaults;
 
-export type { Defaults };
+/**
+ * Defaults where each nested group can be overridden in part, e.g.
+ * `{ string: { min: 3 } }` keeps the default `max` and `characterSet`.
+ */
+type PartialDefaults = {
+	[K in keyof Defaults]?: Defaults[K] extends object
+		? Partial<Defaults[K]>
+		: Defaults[K];
+};
+
+/** Merge layers of partial defaults over complete defaults, group by group. */
+export function mergeDefaults(
+	base: Defaults,
+	...layers: (PartialDefaults | undefined)[]
+): Defaults {
+	const result: Record<string, unknown> = { ...base };
+	for (const layer of layers) {
+		for (const [key, value] of Object.entries(layer ?? {})) {
+			if (value === undefined) continue;
+			const current = result[key];
+			result[key] =
+				typeof value === 'object' &&
+				value !== null &&
+				typeof current === 'object' &&
+				current !== null
+					? { ...current, ...value }
+					: value;
+		}
+	}
+	return result as unknown as Defaults;
+}
+
+export type { Defaults, PartialDefaults };

@@ -1,3 +1,4 @@
+import { Fixture } from '@/fixture';
 import { ConstrainedTransformer } from '@/transformer/transformer';
 import { describe, expect, test } from 'vitest';
 import { z } from 'zod';
@@ -23,13 +24,13 @@ describe('create unions', () => {
 
 	test('creates a union value', () => {
 		expect(
-			typeof transform.fromSchema(z.union([z.string(), z.number()]))
+			typeof transform.fromSchema(z.union([z.string(), z.number()])),
 		).toMatch(/^string|number$/);
 	});
 
 	test('creates a union value with the or syntax', () => {
 		expect(typeof transform.fromSchema(z.string().or(z.number()))).toMatch(
-			/^string|number$/
+			/^string|number$/,
 		);
 	});
 
@@ -52,5 +53,21 @@ describe('create unions', () => {
 
 		expect((result as I).type).toBeTypeOf('string');
 		expect((result as I).type).toMatch(/^a|b$/);
+	});
+});
+
+describe('regressions', () => {
+	const fixture = new Fixture();
+
+	test('skips never options', () => {
+		expect(fixture).toReasonablySatisfy(z.union([z.string(), z.never()]));
+	});
+
+	test('explains a union of only never options', () => {
+		expect(() =>
+			fixture.fromSchema(z.object({ a: z.union([z.never(), z.never()]) })),
+		).toThrowError(
+			'Unable to generate a value at a: every option of the union is never.',
+		);
 	});
 });

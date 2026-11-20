@@ -11,8 +11,13 @@ export const NativeEnumGenerator = Generator({
 	output: ({ def, transform }) => {
 		const enumerable = def.values ?? {};
 
+		// Numeric TypeScript enums map values back to keys (`E[0] === 'A'`).
+		// Skip those reverse-mapping keys the way Zod does, rather than every
+		// numeric-looking key, so `{ '0': 'zero' }` keeps its value.
 		const values = Object.keys(enumerable)
-			.filter((key) => Number.isNaN(Number(key)))
+			.filter(
+				(key) => typeof enumerable[enumerable[key] as string] !== 'number',
+			)
 			.map((key) => enumerable[key]);
 
 		return transform.utils.random.from(values);

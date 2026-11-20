@@ -3,7 +3,7 @@
 		"target": "esnext",
 		"module": "esnext",
 		"lib": ["esnext", "dom"],
-		"moduleResolution": "node",
+		"moduleResolution": "bundler",
 		"esModuleInterop": true,
 		"skipLibCheck": true,
 		"strict": true,
@@ -18,11 +18,13 @@
 		"noEmit": true,
 		"isolatedModules": true, // https://vitejs.dev/guide/features.html#isolatedmodules
 		"useDefineForClassFields": true, // https://vitejs.dev/guide/features.html#usedefineforclassfields
-		"types": ["vite/client"], // https://vitejs.dev/guide/features.html#client-types
+		"types": ["vite/client", "node"], // https://vitejs.dev/guide/features.html#client-types
 		"baseUrl": "./src",
 		"paths": {
 			"@/*": ["*"],
 			"zod-fixture": ["./public"]
 		}
-	}
+	},
+	// The default include skips dot-directories; check the test matchers too.
+	"include": ["**/*", ".vitest/**/*"]
 }

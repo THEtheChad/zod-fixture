@@ -12,6 +12,7 @@
 		"test:coverage": "vitest run --coverage -c vite.lib.config.mts",
 		"build": "vite build -c vite.lib.config.mts",
 		"lint": "eslint . --max-warnings 0",
+		"typecheck": "tsc --noEmit",
 		"prepare": "git config core.hookspath .githooks",
 		"docs:dev": "vitepress dev docs",
 		"docs:build": "vitepress build docs",
@@ -20,19 +21,22 @@
 		"readme:check": "git diff --name-only --exit-code README.md"
 	},
 	"files": [
-		"dist",
-		"!dist/examples",
-		"!dist/test",
-		"!dist/src/**/*.test.d.ts"
+		"dist"
 	],
 	"main": "./dist/zod-fixture.umd.cjs",
-	"module": "./dist/zod-fixture.es.js",
+	"module": "./dist/zod-fixture.es.mjs",
 	"exports": {
 		".": {
-			"import": "./dist/zod-fixture.es.js",
-			"require": "./dist/zod-fixture.umd.cjs",
-			"types": "./dist/public.d.ts"
-		}
+			"import": {
+				"types": "./dist/public.d.mts",
+				"default": "./dist/zod-fixture.es.mjs"
+			},
+			"require": {
+				"types": "./dist/public.d.cts",
+				"default": "./dist/zod-fixture.umd.cjs"
+			}
+		},
+		"./package.json": "./package.json"
 	},
 	"types": "./dist/public.d.ts",
 	"keywords": [
@@ -62,32 +66,29 @@
 	"private": false,
 	"sideEffects": false,
 	"peerDependencies": {
-		"zod": ">=3.0.0"
+		"zod": "^3.22.0"
 	},
 	"dependencies": {
-		"randexp": "^0.5.3"
+		"randexp": "^0.6.1"
 	},
 	"devDependencies": {
-		"@typescript-eslint/eslint-plugin": "^6.17.0",
-		"@typescript-eslint/parser": "^6.17.0",
-		"@vitest/coverage-v8": "^1.6.0",
-		"@vitest/ui": "^1.6.0",
-		"eslint": "^8.56.0",
-		"eslint-config-prettier": "^9.1.0",
-		"lint-staged": "^15.2.7",
+		"@eslint/js": "^10.0.1",
+		"@microsoft/api-extractor": "^7.60.0",
+		"@types/node": "^22.20.5",
+		"@vitest/coverage-v8": "^4.1.12",
+		"@vitest/ui": "^4.1.12",
+		"eslint": "^10.13.0",
+		"eslint-config-prettier": "^10.1.8",
+		"lint-staged": "^17.6.0",
 		"minimist": "^1.2.8",
 		"prettier": "^3.3.2",
-		"typescript": "^5.4.5",
-		"vite": "^5.3.1",
-		"vite-plugin-dts": "^3.9.1",
-		"vitepress": "^1.2.3",
-		"vitest": "^1.6.0",
-		"zod": "^3.23.8"
-	},
-	"imports": {
-		"@/*": "./src/*",
-		"zod-fixture": [
-			"./src/public.ts"
-		]
+		"ret": "^0.5.1",
+		"typescript": "~5.9.3",
+		"typescript-eslint": "^8.72.1",
+		"vite": "^8.3.5",
+		"vite-plugin-dts": "^5.1.2",
+		"vitepress": "^1.6.4",
+		"vitest": "^4.1.12",
+		"zod": "^3.25.76"
 	}
 }

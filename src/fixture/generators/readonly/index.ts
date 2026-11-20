@@ -3,8 +3,8 @@ import { Generator } from '@/transformer/generator';
 
 export const ReadonlyGenerator = Generator({
 	schema: ZodReadonly,
-	output: ({ transform, def }) => {
-		const result = transform.fromSchema(def.innerType);
+	output: ({ transform, def, context }) => {
+		const result = transform.fromSchema(def.innerType, context);
 		return Object.freeze(result);
 	},
 });

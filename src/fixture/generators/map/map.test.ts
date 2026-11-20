@@ -1,3 +1,4 @@
+import { Fixture } from '@/fixture';
 import { ConstrainedTransformer } from '@/transformer/transformer';
 import { describe, expect, test } from 'vitest';
 import { z } from 'zod';
@@ -25,5 +26,21 @@ describe('create Maps', () => {
 		expect((result as I).size).toBe(3);
 		expect([...(result as I).keys()][0]).toBeTypeOf('string');
 		expect([...(result as I).values()][0]).toBeTypeOf('number');
+	});
+});
+
+describe('regressions', () => {
+	const fixture = new Fixture();
+
+	test('fills a map with distinct keys', () => {
+		const schema = z.map(z.boolean(), z.number());
+		for (let seed = 0; seed < 20; seed++) {
+			const keys = [
+				...(
+					fixture.fromSchema(schema, { seed }) as Map<boolean, number>
+				).keys(),
+			];
+			expect(keys.sort()).toEqual([false, true]);
+		}
 	});
 });

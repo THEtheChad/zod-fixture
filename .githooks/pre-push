@@ -1,5 +1,15 @@
 #!/bin/sh
 
-trap "echo \"\nREADME.md has been auto-updated. Please commit and repush.\n\"" ERR
+# Regenerate README.md from docs/index.md, and stop the push when it changed.
+# POSIX sh: `trap ... ERR` is bash-only, and dash rejects it.
 
 node scripts/readme.mjs
+status=$?
+
+if ! git diff --quiet -- README.md; then
+	printf '\nREADME.md has been auto-updated. Please commit and repush.\n\n'
+	exit 1
+fi
+
+# readme.mjs also exits 1 when it fails without changing README.md.
+exit $status

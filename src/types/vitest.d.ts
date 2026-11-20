@@ -1,7 +1,7 @@
 import type { ZodTypeAny } from 'zod';
 
 interface CustomMatchers<R = unknown> {
-	toReasonablySatisfy(schema: ZodTypeAny, iterations = 100): R;
+	toReasonablySatisfy(schema: ZodTypeAny, iterations?: number): R;
 }
 
 declare module 'vitest' {
