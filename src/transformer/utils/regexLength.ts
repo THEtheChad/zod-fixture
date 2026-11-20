@@ -29,7 +29,6 @@ export interface Token {
 	options?: Token[][];
 	followedBy?: boolean;
 	notFollowedBy?: boolean;
-	lookBehind?: boolean;
 	min?: number;
 	max?: number;
 	value?: unknown;
@@ -100,7 +99,7 @@ function equal(a: Lengths, b: Lengths): boolean {
 function isLookaround(token: Token): boolean {
 	return (
 		token.type === TokenType.GROUP &&
-		!!(token.followedBy || token.notFollowedBy || token.lookBehind)
+		!!(token.followedBy || token.notFollowedBy)
 	);
 }
 
@@ -162,21 +161,64 @@ class Repeats {
 		return this.memo[count] as Lengths;
 	}
 
-	/** The highest count worth trying, given `min` to `max` repeats. */
-	maxUseful(min: number, max: number): number {
+	/**
+	 * The highest count worth trying for lengths up to `length` (the limit by
+	 * default), given `min` to `max` repeats.
+	 */
+	maxUseful(min: number, max: number, length = this.limit): number {
 		// An item with no length within the limit can only repeat zero times.
 		if (!this.item.length) return 0;
 		const [from, to] = this.item[0] as [number, number];
-		if (from > 0) return Math.min(max, Math.floor(this.limit / from));
+		if (from > 0) return Math.min(max, Math.floor(length / from));
 		// Some repeats can be empty, so the count isn't bounded by the
-		// lengths: enough of the shortest non-empty repeats to reach the limit
+		// lengths: enough of the shortest non-empty repeats to reach the length
 		// will do, and empty repeats make up the required minimum.
 		const shortestNonEmpty = to > 0 ? 1 : this.item[1]?.[0];
 		if (shortestNonEmpty === undefined) return Math.min(max, min);
-		return Math.min(
-			max,
-			Math.max(min, Math.ceil(this.limit / shortestNonEmpty)),
-		);
+		return Math.min(max, Math.max(min, Math.ceil(length / shortestNonEmpty)));
+	}
+
+	/** The lengths of `min` to `max` repeats. */
+	union(min: number, max: number): Lengths {
+		if (min > max) return NONE;
+		const single = this.item.length === 1 ? this.item[0] : undefined;
+		if (single) {
+			const [from, to] = single;
+			// `count` repeats of `[from, to]` give `[count * from, count * to]`.
+			// Those intervals touch once `count * (to - from) >= from - 1`, so
+			// only the counts before that need their own interval.
+			const merged =
+				to === from
+					? from <= 1
+						? min
+						: Infinity
+					: Math.max(min, Math.ceil((from - 1) / (to - from)));
+			const all: Lengths = [];
+			for (let count = min; count < Math.min(merged, max + 1); count++) {
+				this.budget.spend(1);
+				all.push([count * from, Math.min(count * to, this.limit)]);
+			}
+			if (merged <= max) {
+				all.push([merged * from, Math.min(max * to, this.limit)]);
+			}
+			return normalize(all);
+		}
+		const all: Lengths = [];
+		for (let count = min; count <= max; count++) {
+			const lengths = this.at(count);
+			if (!lengths.length && count > 0) break;
+			this.budget.spend(lengths.length);
+			all.push(...lengths);
+			// More repeats add no new lengths.
+			if (count >= this.last) break;
+		}
+		return normalize(all);
+	}
+
+	/** The lowest count that can reach `length`, given at least `min`. */
+	minUseful(min: number, length: number): number {
+		const longest = this.item[this.item.length - 1]?.[1] ?? 0;
+		return longest > 0 ? Math.max(min, Math.ceil(length / longest)) : min;
 	}
 }
 
@@ -237,17 +279,10 @@ export class LengthPlanner {
 			case TokenType.REPETITION: {
 				const repeats = this.repeatsOf(token);
 				const min = token.min ?? 0;
-				const max = repeats.maxUseful(min, token.max ?? Infinity);
-				const all: Lengths = [];
-				for (let count = min; count <= max; count++) {
-					const lengths = repeats.at(count);
-					if (!lengths.length && count > 0) break;
-					this.budget.spend(lengths.length);
-					all.push(...lengths);
-					// More repeats add no new lengths.
-					if (count >= repeats.last) break;
-				}
-				return normalize(all);
+				return repeats.union(
+					min,
+					repeats.maxUseful(min, token.max ?? Infinity),
+				);
 			}
 			default:
 				throw new UnplannablePattern(
@@ -375,13 +410,15 @@ export class LengthPlanner {
 		const repeats = this.repeatsOf(token);
 		const item = token.value as Token;
 		const min = token.min ?? 0;
+		// Only counts that can add up to `length` are worth checking; scanning
+		// up to the limit made every nested repetition cost O(limit).
 		const max = Math.min(
-			repeats.maxUseful(min, token.max ?? Infinity),
+			repeats.maxUseful(min, token.max ?? Infinity, length),
 			// More repeats than this add only empty ones.
 			Math.max(min, repeats.last),
 		);
 		const counts: Lengths = [];
-		for (let count = min; count <= max; count++) {
+		for (let count = repeats.minUseful(min, length); count <= max; count++) {
 			if (contains(repeats.at(count), length)) counts.push([count, count]);
 		}
 		const count = this.pick(random, normalize(counts));

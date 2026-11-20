@@ -103,6 +103,14 @@ describe('regexLength', () => {
 		);
 	});
 
+	test('generates nested repetitions in time linear in the length', () => {
+		const pattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+		const start = Date.now();
+		const value = planner(pattern, 100_000).generateBetween(0, 100_000);
+		expect(Date.now() - start).toBeLessThan(2000);
+		expect(value).toMatch(pattern);
+	});
+
 	test('handles long exact lengths quickly', () => {
 		const value = planner(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, 5000).generateBetween(
 			5000,
